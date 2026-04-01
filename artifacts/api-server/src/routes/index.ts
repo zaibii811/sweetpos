@@ -15,6 +15,7 @@ import activityLogRouter from "./activity-log";
 import shiftsRouter from "./shifts";
 import timeEntriesRouter from "./time-entries";
 import payrollRouter from "./payroll";
+import analyticsRouter from "./analytics";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(activityLogRouter);
 router.use(shiftsRouter);
 router.use(timeEntriesRouter);
 router.use(payrollRouter);
+router.use(analyticsRouter);
 
 export default router;

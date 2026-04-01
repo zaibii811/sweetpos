@@ -10,12 +10,13 @@ export type Permission =
   | "payroll"
   | "void_sale"
   | "delete"
-  | "timeclock";
+  | "timeclock"
+  | "dashboard";
 
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
-  owner: ["pos", "orders", "inventory", "staff", "reports", "settings", "payroll", "void_sale", "delete", "timeclock"],
-  admin: ["pos", "orders", "inventory", "staff", "reports", "settings", "payroll", "void_sale", "delete", "timeclock"],
-  manager: ["pos", "orders", "inventory", "staff", "reports", "void_sale", "timeclock"],
+  owner: ["pos", "orders", "inventory", "staff", "reports", "settings", "payroll", "void_sale", "delete", "timeclock", "dashboard"],
+  admin: ["pos", "orders", "inventory", "staff", "reports", "settings", "payroll", "void_sale", "delete", "timeclock", "dashboard"],
+  manager: ["pos", "orders", "inventory", "staff", "reports", "void_sale", "timeclock", "dashboard"],
   cashier: ["pos", "timeclock"],
 };
 

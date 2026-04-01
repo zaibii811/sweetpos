@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Store, Receipt, Package, Users, BarChart3, LogOut, Sun, Moon, Settings, Lock, Timer } from "lucide-react";
+import { Store, Receipt, Package, Users, BarChart3, LogOut, Sun, Moon, Settings, Lock, Timer, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAutoLock } from "@/hooks/use-auto-lock";
@@ -47,6 +47,7 @@ export function Layout({ children }: { children: ReactNode }) {
   }
 
   const allNavItems = [
+    { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", permission: "dashboard" as const },
     { href: "/", icon: Store, label: "POS", permission: "pos" as const },
     { href: "/orders", icon: Receipt, label: "Orders", permission: "orders" as const },
     { href: "/inventory", icon: Package, label: "Inventory", permission: "inventory" as const },

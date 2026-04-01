@@ -60,7 +60,16 @@ Full-stack Point-of-Sale (POS) web app for a Malaysian candy and cake shop calle
   - Late detection: marks entry if >5 min past scheduled shift start
   - Displays hours worked on clock-out
   - Accessible to cashiers (they cannot access other pages)
-- **Reports**: Sales analytics, top products, daily chart, category breakdown
+- **Dashboard** (`/dashboard`, managers + owners):
+  - Today's total sales (RM), transaction count, SST collected
+  - Top 5 products today — horizontal bar chart
+  - Low stock alert count (clickable, navigates to /inventory), items expiring within 14 days
+  - Live "staff clocked in" panel with elapsed time per person
+  - Quick-link buttons to POS, Reports, Inventory, Time Clock
+- **Reports & Analytics** (`/reports`, 3 tabs):
+  - **Sales tab**: Date range picker + 6 quick presets (Today/Yesterday/This Week/Last Week/This Month/Last Month); KPI cards (Revenue, Transactions, Avg Order Value, SST); category revenue pie chart; payment methods bar chart; best-selling products bar chart + table (weight-based shows kg sold); plastic bags consumed; SST summary breakdown
+  - **Inventory tab**: 4 KPI cards (Total Products, Low Stock, Expiring, Expired); Products table with All/Low/Expiring/Expired filters; Consumables & Bags table; all with stock vs reorder-level comparison
+  - **Staff & Payroll tab**: Period selector (week/month); payroll summary table (hours, late count, overtime days, estimated pay); hours-worked bar chart; late arrivals log with incident count; Payroll CSV export; Late Log CSV export
 - **PWA**: Service worker + manifest for offline support on tablets/phones
 
 ## Currency & Tax
