@@ -13,4 +13,5 @@ export const UpdateStaffBodyRole = {
   admin: "admin",
   cashier: "cashier",
   manager: "manager",
+  owner: "owner",
 } as const;

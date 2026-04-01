@@ -10,6 +10,8 @@ import consumablesRouter from "./consumables";
 import stockAdjustmentsRouter from "./stock-adjustments";
 import bagSizeRulesRouter from "./bag-size-rules";
 import inventoryAlertsRouter from "./inventory-alerts";
+import settingsRouter from "./settings";
+import activityLogRouter from "./activity-log";
 
 const router: IRouter = Router();
 
@@ -24,5 +26,7 @@ router.use(consumablesRouter);
 router.use(stockAdjustmentsRouter);
 router.use(bagSizeRulesRouter);
 router.use(inventoryAlertsRouter);
+router.use(settingsRouter);
+router.use(activityLogRouter);
 
 export default router;

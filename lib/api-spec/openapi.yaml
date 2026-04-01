@@ -921,7 +921,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, cashier, manager]
+          enum: [admin, cashier, manager, owner]
         active:
           type: boolean
         createdAt:
@@ -943,7 +943,7 @@ components:
           description: 4-6 digit PIN
         role:
           type: string
-          enum: [admin, cashier, manager]
+          enum: [admin, cashier, manager, owner]
         active:
           type: boolean
       required:
@@ -960,7 +960,7 @@ components:
           type: ["string", "null"]
         role:
           type: string
-          enum: [admin, cashier, manager]
+          enum: [admin, cashier, manager, owner]
         active:
           type: boolean
 

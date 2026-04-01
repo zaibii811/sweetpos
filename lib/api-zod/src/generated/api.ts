@@ -26,7 +26,7 @@ export const LoginResponse = zod.object({
   staff: zod.object({
     id: zod.number(),
     name: zod.string(),
-    role: zod.enum(["admin", "cashier", "manager"]),
+    role: zod.enum(["admin", "cashier", "manager", "owner"]),
     active: zod.boolean(),
     createdAt: zod.string(),
   }),
@@ -46,7 +46,7 @@ export const LogoutResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
-  role: zod.enum(["admin", "cashier", "manager"]),
+  role: zod.enum(["admin", "cashier", "manager", "owner"]),
   active: zod.boolean(),
   createdAt: zod.string(),
 });
@@ -378,7 +378,7 @@ export const UpdateOrderStatusResponse = zod.object({
 export const ListStaffResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
-  role: zod.enum(["admin", "cashier", "manager"]),
+  role: zod.enum(["admin", "cashier", "manager", "owner"]),
   active: zod.boolean(),
   createdAt: zod.string(),
 });
@@ -390,7 +390,7 @@ export const ListStaffResponse = zod.array(ListStaffResponseItem);
 export const CreateStaffBody = zod.object({
   name: zod.string(),
   pin: zod.string().describe("4-6 digit PIN"),
-  role: zod.enum(["admin", "cashier", "manager"]),
+  role: zod.enum(["admin", "cashier", "manager", "owner"]),
   active: zod.boolean().optional(),
 });
 
@@ -404,14 +404,14 @@ export const UpdateStaffParams = zod.object({
 export const UpdateStaffBody = zod.object({
   name: zod.string().optional(),
   pin: zod.string().nullish(),
-  role: zod.enum(["admin", "cashier", "manager"]).optional(),
+  role: zod.enum(["admin", "cashier", "manager", "owner"]).optional(),
   active: zod.boolean().optional(),
 });
 
 export const UpdateStaffResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
-  role: zod.enum(["admin", "cashier", "manager"]),
+  role: zod.enum(["admin", "cashier", "manager", "owner"]),
   active: zod.boolean(),
   createdAt: zod.string(),
 });

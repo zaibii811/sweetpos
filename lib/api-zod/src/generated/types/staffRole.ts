@@ -12,4 +12,5 @@ export const StaffRole = {
   admin: "admin",
   cashier: "cashier",
   manager: "manager",
+  owner: "owner",
 } as const;

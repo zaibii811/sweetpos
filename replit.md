@@ -18,10 +18,31 @@ Full-stack Point-of-Sale (POS) web app for a Malaysian candy and cake shop calle
 - **Build**: esbuild (CJS bundle)
 - **Auth**: Session-based PIN login (express-session)
 
+## Authentication & Access Control
+
+- **Login flows**:
+  - Cashier: 4-digit PIN numpad (kiosk-style, quick)
+  - Owner/Manager: username + password (standard form) via the "Username" tab
+  - Both tabs are on the same login screen
+- **Roles & permissions**:
+  - `owner` / `admin`: full access — POS, Orders, Inventory, Staff, Reports, Settings, delete, payroll
+  - `manager`: POS, Orders, Inventory, Staff, Reports (no Settings, no payroll)
+  - `cashier`: POS only — all other pages show "Access Denied"
+  - Nav items are automatically filtered per role
+- **Auto-lock**: 5 minutes of inactivity triggers a PIN lock overlay; enter PIN to unlock without logging out
+- **Activity log**: All login/logout and key actions are recorded to the `activity_log` table (visible on Settings → Activity Log for managers+)
+- **Seeded credentials**:
+  - Owner: PIN `1234`, username `owner`, password `sweetpos2024`
+  - Siti Rahimah (manager): PIN `2222`
+  - Ahmad Faizal (cashier): PIN `3333`
+  - Nur Ain (cashier): PIN `4444`
+
 ## Features
 
 - **POS Cashier**: Product grid, cake modifiers popup, discount (% or RM), SST toggle, cash numpad with change, QR placeholders for TNG/DuitNow, split payment, receipt modal with WhatsApp share. Weight-based products trigger a weight numpad popup with bag toggle and auto price calculation.
 - **Orders**: Order history with status management, detail view
+- **Settings (Owner only)**: Shop name, address, SST registration number, receipt footer, global SST on/off toggle, manage payment methods shown at checkout (Cash/Card/TNG eWallet/DuitNow QR), export/import settings as JSON
+- **Activity Log (Manager+)**: Full audit log of logins, logouts and key actions — viewable under Settings → Activity Log tab
 - **Inventory Management**: Full inventory module with:
   - Products tab: fixed-price and weight-based (per 100g) products, expiry dates, cost price, low-stock thresholds, SST toggle, category, SKU, CSV import via papaparse
   - Consumables tab: plastic bags and supplies with stock tracking, low-stock threshold
@@ -38,12 +59,12 @@ Full-stack Point-of-Sale (POS) web app for a Malaysian candy and cake shop calle
 - Currency: Malaysian Ringgit (MYR), displayed as "RM X.XX"
 - Tax: 8% SST (Sales & Service Tax) — toggleable per product
 
-## Default Staff PINs (seed data)
+## Default Staff Credentials (seed data)
 
-- Admin: `1234`
-- Siti Rahimah (manager): `2222`
-- Ahmad Faizal (cashier): `3333`
-- Nur Ain (cashier): `4444`
+- Owner: PIN `1234`, username `owner`, password `sweetpos2024`
+- Siti Rahimah (manager): PIN `2222`
+- Ahmad Faizal (cashier): PIN `3333`
+- Nur Ain (cashier): PIN `4444`
 
 ## Structure
 

@@ -28,6 +28,7 @@ export const StaffRole = {
   admin: "admin",
   cashier: "cashier",
   manager: "manager",
+  owner: "owner",
 } as const;
 
 export interface Staff {
@@ -222,6 +223,7 @@ export const CreateStaffBodyRole = {
   admin: "admin",
   cashier: "cashier",
   manager: "manager",
+  owner: "owner",
 } as const;
 
 export interface CreateStaffBody {
@@ -239,6 +241,7 @@ export const UpdateStaffBodyRole = {
   admin: "admin",
   cashier: "cashier",
   manager: "manager",
+  owner: "owner",
 } as const;
 
 export interface UpdateStaffBody {

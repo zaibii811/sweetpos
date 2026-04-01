@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { Layout } from "@/components/layout";
 
 import NotFound from "@/pages/not-found";
@@ -13,6 +14,8 @@ import Orders from "@/pages/orders";
 import Inventory from "@/pages/inventory";
 import Staff from "@/pages/staff";
 import Reports from "@/pages/reports";
+import Settings from "@/pages/settings";
+import AccessDenied from "@/pages/access-denied";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,16 +26,33 @@ const queryClient = new QueryClient({
   },
 });
 
+function GuardedRoute({ permission, component: Component }: { permission: Parameters<ReturnType<typeof usePermissions>["can"]>[0]; component: React.ComponentType }) {
+  const { can } = usePermissions();
+  if (!can(permission)) return <AccessDenied />;
+  return <Component />;
+}
+
 function Router() {
   return (
     <Layout>
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/" component={POS} />
-        <Route path="/orders" component={Orders} />
-        <Route path="/inventory" component={Inventory} />
-        <Route path="/staff" component={Staff} />
-        <Route path="/reports" component={Reports} />
+        <Route path="/orders">
+          {() => <GuardedRoute permission="orders" component={Orders} />}
+        </Route>
+        <Route path="/inventory">
+          {() => <GuardedRoute permission="inventory" component={Inventory} />}
+        </Route>
+        <Route path="/staff">
+          {() => <GuardedRoute permission="staff" component={Staff} />}
+        </Route>
+        <Route path="/reports">
+          {() => <GuardedRoute permission="reports" component={Reports} />}
+        </Route>
+        <Route path="/settings">
+          {() => <GuardedRoute permission="settings" component={Settings} />}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>

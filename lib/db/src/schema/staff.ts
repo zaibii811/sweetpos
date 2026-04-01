@@ -7,6 +7,8 @@ export const staffTable = pgTable("staff", {
   name: text("name").notNull(),
   pin: text("pin").notNull(),
   role: text("role").notNull().default("cashier"),
+  username: text("username"),
+  passwordHash: text("password_hash"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
