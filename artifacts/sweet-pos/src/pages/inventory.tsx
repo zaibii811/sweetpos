@@ -190,7 +190,6 @@ function ProductModal({ product, categories, onClose, onSaved }: ProductModalPro
     price: product?.price?.toString() ?? "",
     costPrice: product?.costPrice?.toString() ?? "",
     categoryId: product?.categoryId?.toString() ?? "",
-    sku: product?.sku ?? "",
     stock: product?.stock?.toString() ?? "0",
     lowStockThreshold: product?.lowStockThreshold?.toString() ?? "10",
     taxable: product?.taxable ?? true,
@@ -211,7 +210,6 @@ function ProductModal({ product, categories, onClose, onSaved }: ProductModalPro
       price: parseFloat(form.price),
       costPrice: form.costPrice ? parseFloat(form.costPrice) : null,
       categoryId: form.categoryId ? parseInt(form.categoryId, 10) : null,
-      sku: form.sku || null,
       stock: parseInt(form.stock || "0", 10),
       lowStockThreshold: parseInt(form.lowStockThreshold || "10", 10),
       taxable: form.taxable,
@@ -291,10 +289,6 @@ function ProductModal({ product, categories, onClose, onSaved }: ProductModalPro
                     {categories.map((c) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm">SKU</Label>
-                <Input value={form.sku} onChange={(e) => set("sku", e.target.value)} placeholder="Optional" />
               </div>
               <div className="col-span-2 space-y-1.5">
                 <Label className="text-sm">Expiry Date</Label>
@@ -651,7 +645,6 @@ function CsvImportModal({ categories, onClose, onImported }: CsvImportModalProps
             productType: row.type === "weight" ? "weight" : "fixed",
             price: parseFloat(row.price || "0"),
             costPrice: row.cost_price ? parseFloat(row.cost_price) : null,
-            sku: row.sku?.trim() || null,
             stock: parseInt(row.stock || "0", 10),
             lowStockThreshold: parseInt(row.low_stock_threshold || "10", 10),
             categoryId: catId ?? null,
@@ -681,7 +674,7 @@ function CsvImportModal({ categories, onClose, onImported }: CsvImportModalProps
           <div className="bg-muted/50 rounded-xl p-4 text-xs space-y-1 border border-dashed">
             <p className="font-semibold mb-2">Expected CSV columns:</p>
             <code className="text-[11px] text-muted-foreground leading-relaxed block">
-              name, type (fixed/weight), price, cost_price, sku,<br />
+              name, type (fixed/weight), price, cost_price,<br />
               stock, low_stock_threshold, category, taxable, active, expiry_date
             </code>
           </div>
@@ -887,7 +880,6 @@ export default function Inventory() {
 
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.sku ?? "").toLowerCase().includes(search.toLowerCase()) ||
     (p.categoryName ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
@@ -1035,10 +1027,13 @@ export default function Inventory() {
                       data-testid={`product-row-${p.id}`}
                     >
                       <TableCell>
-                        <div>
-                          <p className="font-semibold text-sm">{p.name}</p>
-                          {p.sku && <p className="text-xs text-muted-foreground">{p.sku}</p>}
-                        </div>
+                        <button
+                          onClick={() => setProductModal({ product: p })}
+                          className="font-semibold text-sm text-left hover:text-primary hover:underline cursor-pointer transition-colors"
+                          data-testid={`product-name-${p.id}`}
+                        >
+                          {p.name}
+                        </button>
                       </TableCell>
                       <TableCell>
                         <Badge variant={p.productType === "weight" ? "outline" : "secondary"} className="text-[10px] font-semibold">
@@ -1078,11 +1073,11 @@ export default function Inventory() {
                           </button>
                           <button
                             onClick={() => setProductModal({ product: p })}
-                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground/40 hover:text-muted-foreground transition-colors"
                             title="Edit"
                             data-testid={`edit-product-${p.id}`}
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteModal({ type: "product", id: p.id, name: p.name })}
