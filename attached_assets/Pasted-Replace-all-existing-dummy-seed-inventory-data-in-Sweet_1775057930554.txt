@@ -1,0 +1,103 @@
+Replace all existing dummy/seed inventory data in SweetPOS with the 
+products from our cleaned CSV file. 
+
+--- STEP 1: Clear dummy data ---
+Delete all existing records from the products table and categories table 
+(keep all other tables intact — do not touch users, staff, shifts, 
+time_clock, sales, or settings).
+
+--- STEP 2: Upload and parse the CSV ---
+The cleaned product CSV file is located at: /uploads/sweetpos_products_clean.csv
+
+Parse it using these column mappings:
+    Handle          → slug / handle
+    SKU             → sku
+    Name            → name
+    Category        → category (use as category name)
+    Cost            → cost_price (MYR, default 0 if blank)
+    Price [Hashtag Sweets] → selling_price (MYR)
+    Track stock     → track_stock (Y = true, N = false)
+    In stock [Hashtag Sweets] → stock_qty (default 0 if blank)
+    Low stock [Hashtag Sweets] → low_stock_threshold (default 0 if blank)
+    Barcode         → barcode (blank if empty)
+    Sold by weight  → sold_by_weight (Y = true, N = false)
+    Available for sale [Hashtag Sweets] → is_active (Y = true, N = false)
+
+Special handling:
+    - If selling_price = "variable" → set selling_price = 0, 
+      set variable_price = true
+    - If selling_price or cost_price is blank → import as 0
+    - sold_by_weight is N for all products in this CSV — weight-based 
+      gummy products will be configured manually after import
+
+--- STEP 3: Auto-create categories ---
+Read all unique values from the Category column and insert them into 
+the categories table before inserting products. Assign each category 
+a default display order based on this priority sequence:
+
+1.  Gummies & Candy
+2.  Candy Toys (YLF)
+3.  Chocolate & Choco Snacks
+4.  Lollipops
+5.  Toys & Games
+6.  Cartoon Cakes
+7.  Bento Cakes
+8.  Cakes
+9.  Cake Toppers & Candles
+10. Stationery
+11. Stickers & Tokens
+12. Keychains & Accessories
+13. Jewellery & Accessories
+14. Hair Accessories
+15. Bags & Wallets
+16. Balloons & Party
+17. Party Supplies
+18. Bouquets
+19. Drinks
+20. Packaging
+21. Others
+
+Assign these emoji icons and colors to each category:
+1.  Gummies & Candy          🍬  #FF6B6B
+2.  Candy Toys (YLF)         🍭  #FF9F43
+3.  Chocolate & Choco Snacks 🍫  #8B4513
+4.  Lollipops                🍡  #FD79A8
+5.  Toys & Games             🎮  #00B894
+6.  Cartoon Cakes            🎂  #A29BFE
+7.  Bento Cakes              🍰  #DDA0DD
+8.  Cakes                    🎂  #E17055
+9.  Cake Toppers & Candles   🕯️  #FDCB6E
+10. Stationery               ✏️  #0984E3
+11. Stickers & Tokens        ⭐  #FFEAA7
+12. Keychains & Accessories  🔑  #B2BEC3
+13. Jewellery & Accessories  💍  #FAB1A0
+14. Hair Accessories         🎀  #FD79A8
+15. Bags & Wallets           👜  #636E72
+16. Balloons & Party         🎈  #FF7675
+17. Party Supplies           🎆  #E84393
+18. Bouquets                 💐  #00B894
+19. Drinks                   🥤  #74B9FF
+20. Packaging                🛍️  #DFE6E9
+21. Others                   📋  #B2BEC3
+
+--- STEP 4: Insert products ---
+Insert all 370 products into the products table linked to their 
+category_id. Skip any row where Name is blank.
+
+--- STEP 5: Add consumable ---
+After product import, ensure this consumable exists in the 
+consumables table (insert only if it doesn't already exist):
+    Name: Gummy Plastic Bag
+    Unit: pieces
+    Current stock: 500
+    Low stock threshold: 50
+    Cost per unit: 0.10
+
+--- STEP 6: Confirm and report ---
+After import, return a summary showing:
+    - Total categories created
+    - Total products imported
+    - Products with variable price (selling_price = 0, variable_price = true)
+    - Products with zero cost price (flagged for review)
+    - Products with barcodes
+    - Consumables confirmed

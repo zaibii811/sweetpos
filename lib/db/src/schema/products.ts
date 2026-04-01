@@ -17,6 +17,7 @@ export const productsTable = pgTable("products", {
   taxable: boolean("taxable").notNull().default(true),
   active: boolean("active").notNull().default(true),
   imageUrl: text("image_url"),
+  barcode: text("barcode"),
   expiryDate: text("expiry_date"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
