@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "SweetPOS"
+version = "1.0.0"
+id = "artifacts/sweet-pos"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18094
+
+[services.development]
+run = "pnpm --filter @workspace/sweet-pos run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sweet-pos", "run", "build" ]
+publicDir = "artifacts/sweet-pos/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18094"
+BASE_PATH = "/"
