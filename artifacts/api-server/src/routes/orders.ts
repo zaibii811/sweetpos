@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lt, SQL } from "drizzle-orm";
+import { eq, and, gte, lt, inArray, SQL } from "drizzle-orm";
 import { db, ordersTable, orderItemsTable, productsTable, staffTable } from "@workspace/db";
 import {
   CreateOrderBody,
@@ -114,11 +114,7 @@ router.get("/orders", async (req, res): Promise<void> => {
     allItems = await db
       .select()
       .from(orderItemsTable)
-      .where(
-        orderIds.length === 1
-          ? eq(orderItemsTable.orderId, orderIds[0])
-          : and(...orderIds.map((id) => eq(orderItemsTable.orderId, id)))
-      );
+      .where(inArray(orderItemsTable.orderId, orderIds));
   }
 
   const data = orders.map((o) => {
@@ -173,7 +169,7 @@ router.post("/orders", async (req, res): Promise<void> => {
   const products = await db
     .select()
     .from(productsTable)
-    .where(and(...productIds.map((id) => eq(productsTable.id, id))));
+    .where(inArray(productsTable.id, productIds));
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
