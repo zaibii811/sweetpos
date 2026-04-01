@@ -12,6 +12,9 @@ import bagSizeRulesRouter from "./bag-size-rules";
 import inventoryAlertsRouter from "./inventory-alerts";
 import settingsRouter from "./settings";
 import activityLogRouter from "./activity-log";
+import shiftsRouter from "./shifts";
+import timeEntriesRouter from "./time-entries";
+import payrollRouter from "./payroll";
 
 const router: IRouter = Router();
 
@@ -28,5 +31,8 @@ router.use(bagSizeRulesRouter);
 router.use(inventoryAlertsRouter);
 router.use(settingsRouter);
 router.use(activityLogRouter);
+router.use(shiftsRouter);
+router.use(timeEntriesRouter);
+router.use(payrollRouter);
 
 export default router;

@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Store, Receipt, Package, Users, BarChart3, LogOut, Sun, Moon, Settings, Lock } from "lucide-react";
+import { Store, Receipt, Package, Users, BarChart3, LogOut, Sun, Moon, Settings, Lock, Timer } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useAutoLock } from "@/hooks/use-auto-lock";
@@ -52,6 +52,7 @@ export function Layout({ children }: { children: ReactNode }) {
     { href: "/inventory", icon: Package, label: "Inventory", permission: "inventory" as const },
     { href: "/staff", icon: Users, label: "Staff", permission: "staff" as const },
     { href: "/reports", icon: BarChart3, label: "Reports", permission: "reports" as const },
+    { href: "/timeclock", icon: Timer, label: "Time Clock", permission: "timeclock" as const },
     { href: "/settings", icon: Settings, label: "Settings", permission: "settings" as const },
   ];
 

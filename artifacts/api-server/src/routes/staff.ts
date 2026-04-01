@@ -42,6 +42,9 @@ const ExtendedUpdateBody = z.object({
   active: z.boolean().optional(),
   username: z.string().optional().nullable(),
   password: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  hourlyRate: z.string().optional().nullable(),
+  photoUrl: z.string().optional().nullable(),
 });
 
 router.get("/staff", async (_req, res): Promise<void> => {
@@ -92,6 +95,9 @@ router.patch("/staff/:id", async (req, res): Promise<void> => {
   if (parsed.data.role !== undefined) updateData.role = parsed.data.role;
   if (parsed.data.active !== undefined) updateData.active = parsed.data.active;
   if (parsed.data.username !== undefined) updateData.username = parsed.data.username;
+  if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone;
+  if (parsed.data.hourlyRate !== undefined) updateData.hourlyRate = parsed.data.hourlyRate;
+  if (parsed.data.photoUrl !== undefined) updateData.photoUrl = parsed.data.photoUrl;
   if (parsed.data.password) {
     updateData.passwordHash = await bcrypt.hash(parsed.data.password, 10);
   } else if (parsed.data.password === null) {

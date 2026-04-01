@@ -50,7 +50,16 @@ Full-stack Point-of-Sale (POS) web app for a Malaysian candy and cake shop calle
   - Bag Size Rules settings panel — maps weight thresholds to specific bag consumables
   - Alert banners for low stock, expiring (within 7 days), expired products
   - Nav badge on Inventory showing total live alert count
-- **Staff**: Staff management with PIN authentication, role-based access (admin/manager/cashier)
+- **Staff Management** (full module with 3 tabs):
+  - **Profiles tab**: Add/edit/deactivate staff with phone, hourly rate (RM), photo upload (base64), username/password for manager login
+  - **Scheduling tab**: Mon–Sun weekly grid per staff member; click cell to assign/edit/remove shift with start/end time and optional role override; navigate prev/next week; Copy Last Week button; Print/PDF button
+  - **Time Reports tab**: Payroll summary per staff (hours, late arrivals, overtime days, estimated pay); clock entries log with inline edit/delete (manager+); period filter (this week/last week/this month/last month); CSV and PDF export
+- **Time Clock** (`/timeclock`, all roles including cashier):
+  - PIN numpad interface for clock-in/clock-out
+  - Auto-detects if already clocked in (shows elapsed time) or not
+  - Late detection: marks entry if >5 min past scheduled shift start
+  - Displays hours worked on clock-out
+  - Accessible to cashiers (they cannot access other pages)
 - **Reports**: Sales analytics, top products, daily chart, category breakdown
 - **PWA**: Service worker + manifest for offline support on tablets/phones
 

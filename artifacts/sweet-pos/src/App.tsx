@@ -15,6 +15,7 @@ import Inventory from "@/pages/inventory";
 import Staff from "@/pages/staff";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
+import TimeClock from "@/pages/time-clock";
 import AccessDenied from "@/pages/access-denied";
 
 const queryClient = new QueryClient({
@@ -52,6 +53,9 @@ function Router() {
         </Route>
         <Route path="/settings">
           {() => <GuardedRoute permission="settings" component={Settings} />}
+        </Route>
+        <Route path="/timeclock">
+          {() => <GuardedRoute permission="timeclock" component={TimeClock} />}
         </Route>
         <Route component={NotFound} />
       </Switch>
