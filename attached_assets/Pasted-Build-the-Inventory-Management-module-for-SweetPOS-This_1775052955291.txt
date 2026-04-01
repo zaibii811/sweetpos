@@ -1,0 +1,58 @@
+Build the Inventory Management module for SweetPOS.
+
+This is a retail candy shop — no baking or raw ingredients.
+Remove all recipe/BOM and ingredient tracking.
+
+Three product/item types to support:
+
+1. Fixed-Price Products:
+- Standard items sold as individual units or pre-packed
+- Fields: name, category, SKU, selling price (MYR), cost price, current stock (units),
+  low stock threshold, expiry date
+- Examples: pre-packed gummy bags, lollipops, chocolate bars, canned drinks
+
+2. Weight-Based Products (critical feature):
+- Items sold loose by weight, priced per 100g
+- Fields: name, category, price per 100g (MYR), current stock (grams),
+  low stock threshold (grams), expiry date
+- Examples: gummies (RM9/100g), sour belts, marshmallows, chocolate rocks
+- On the POS screen, when a weight-based item is added to cart:
+    → Show a weight input popup (numeric keypad)
+    → Staff enters weight in grams (e.g. 250)
+    → System auto-calculates price: (weight ÷ 100) × price per 100g
+    → Display as: "Gummy Bears 250g — RM22.50"
+    → Show a toggle button labeled "Plastic Bag" (default: ON)
+        - If ON: deduct 1 unit from "Gummy Plastic Bag" consumables inventory
+        - If OFF: no bag deducted (customer brought own bag)
+    → Toggle state is shown in the cart line item (e.g. "Gummy Bears 250g 🛍️" or "Gummy Bears 250g — no bag")
+- Deduct entered weight (in grams) from candy stock when sale is completed
+- Deduct 1 plastic bag from consumables stock if bag toggle was ON
+
+3. Consumables (internal stock, not sold directly):
+- Items consumed during sales but not sold as products
+- Fields: name, unit (pieces), current stock, low stock threshold, cost per unit
+- Examples: Gummy Plastic Bag (S), Gummy Plastic Bag (M), Gummy Plastic Bag (L)
+- Not shown on POS product grid — only deducted automatically via the bag toggle
+- Can manually top up stock with supplier/note log
+- Low stock alert if bags fall below threshold (e.g. less than 50 bags remaining)
+
+Bag size logic (optional enhancement):
+- In Settings, allow owner to define bag size rules by weight:
+    e.g. under 200g → Small bag, 200g–500g → Medium bag, above 500g → Large bag
+- System auto-selects the correct bag size SKU to deduct based on weight entered
+- Staff can override the auto-selected size from the toggle popup
+
+Inventory management features:
+- Add / Edit / Delete products and consumables
+- Separate tabs in Inventory: "Products" | "Consumables"
+- Filter and search by name or category
+- Category management: Gummies, Chocolates, Sour Candy, Drinks, Gifts, Others
+- Low stock alerts (units for fixed, grams for weight-based, pieces for consumables)
+  — single badge on nav icon covering all types
+- Expiry alerts for items expiring within 7 days
+- Stock adjustment log: manual top-up with reason field (e.g. "New shipment — 2kg bags")
+- Bulk import products via CSV
+
+Stock top-up flow:
+- Select product or consumable → enter quantity received → enter supplier/note → confirm
+- All top-ups logged with timestamp and staff name

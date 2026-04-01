@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, inArray, SQL } from "drizzle-orm";
-import { db, ordersTable, orderItemsTable, productsTable, staffTable } from "@workspace/db";
+import { db, ordersTable, orderItemsTable, productsTable, staffTable, consumablesTable, stockAdjustmentsTable } from "@workspace/db";
 import {
   CreateOrderBody,
   ListOrdersQueryParams,
@@ -159,6 +159,18 @@ router.post("/orders", async (req, res): Promise<void> => {
   }
 
   const { items, paymentMethod, amountPaid, notes, staffId } = parsed.data;
+  // Extra fields not in the generated schema — read directly from body
+  const bagDeductions: Array<{ consumableId: number; quantity: number; consumableName?: string }> =
+    Array.isArray(req.body.bagDeductions) ? req.body.bagDeductions : [];
+  // Per-item price overrides (used for weight-based items where price is calculated client-side)
+  const itemPriceOverrides: Record<number, number> = {};
+  if (Array.isArray(req.body.itemPriceOverrides)) {
+    for (const ov of req.body.itemPriceOverrides) {
+      if (typeof ov.productId === "number" && typeof ov.unitPrice === "number") {
+        itemPriceOverrides[ov.productId] = ov.unitPrice;
+      }
+    }
+  }
 
   if (!items || items.length === 0) {
     res.status(400).json({ error: "Order must have at least one item" });
@@ -180,7 +192,9 @@ router.post("/orders", async (req, res): Promise<void> => {
     const product = productMap.get(item.productId);
     if (!product) throw new Error(`Product ${item.productId} not found`);
 
-    const unitPrice = parseFloat(product.price);
+    const basePrice = parseFloat(product.price);
+    // For weight-based items, use the client-calculated unit price if provided
+    const unitPrice = itemPriceOverrides[item.productId] ?? basePrice;
     const taxRate = product.taxable ? SST_RATE : 0;
     const itemSubtotal = unitPrice * item.quantity;
     const itemTax = itemSubtotal * taxRate;
@@ -224,13 +238,40 @@ router.post("/orders", async (req, res): Promise<void> => {
     orderItemData.map((item) => ({ ...item, orderId: newOrder.id }))
   );
 
+  // Deduct product stock (weight-based: deduct grams; fixed: deduct units)
   for (const item of items) {
     const product = productMap.get(item.productId);
-    if (product && product.stock > 0) {
+    if (product) {
       await db
         .update(productsTable)
         .set({ stock: Math.max(0, product.stock - item.quantity) })
         .where(eq(productsTable.id, item.productId));
+    }
+  }
+
+  // Deduct consumables (plastic bags) and log adjustments
+  for (const deduction of bagDeductions) {
+    if (!deduction.consumableId || !deduction.quantity) continue;
+    const [consumable] = await db
+      .select()
+      .from(consumablesTable)
+      .where(eq(consumablesTable.id, deduction.consumableId));
+    if (consumable) {
+      const newStock = Math.max(0, consumable.stock - deduction.quantity);
+      await db
+        .update(consumablesTable)
+        .set({ stock: newStock })
+        .where(eq(consumablesTable.id, deduction.consumableId));
+      await db.insert(stockAdjustmentsTable).values({
+        itemType: "consumable",
+        itemId: deduction.consumableId,
+        itemName: consumable.name,
+        adjustmentType: "deduction",
+        quantity: String(deduction.quantity),
+        reason: `Auto-deducted for order ${newOrder.orderNumber}`,
+        staffId: staffId ?? null,
+        staffName: null,
+      });
     }
   }
 

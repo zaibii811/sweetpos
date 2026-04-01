@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   useListProducts,
   useListCategories,
@@ -32,11 +33,20 @@ interface CartModifiers {
   giftWrap?: boolean;
 }
 
+interface WeightModifiers {
+  weightGrams: number;
+  calculatedUnitPrice: number;
+  bagIncluded: boolean;
+  bagConsumableId?: number;
+  bagConsumableName?: string;
+}
+
 interface CartItem {
   product: Product;
   quantity: number;
   modifiers?: CartModifiers;
-  /** Price already adjusted for modifiers */
+  weightModifiers?: WeightModifiers;
+  /** Price already adjusted for modifiers/weight */
   unitPrice: number;
 }
 
@@ -237,6 +247,144 @@ function ModifiersDialog({ product, onConfirm, onCancel }: ModifiersDialogProps)
           </Button>
           <Button onClick={handleConfirm} className="rounded-xl flex-1" data-testid="modifier-confirm">
             Add to Cart
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Weight Input Modal ────────────────────────────────────────────────────────
+
+interface WeightInputModalProps {
+  product: (Product & { productType?: string }) | null;
+  consumables: Array<{ id: number; name: string; stock: number; unit: string }>;
+  bagSizeRules: Array<{ id: number; name: string; maxWeightGrams: number; consumableId: number | null }>;
+  onConfirm: (product: Product, weightModifiers: WeightModifiers, unitPrice: number) => void;
+  onCancel: () => void;
+}
+
+const WEIGHT_NUMPAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"];
+
+function WeightInputModal({ product, consumables, bagSizeRules, onConfirm, onCancel }: WeightInputModalProps) {
+  const [grams, setGrams] = useState("");
+  const [bagIncluded, setBagIncluded] = useState(consumables.length > 0);
+  const [selectedConsumableId, setSelectedConsumableId] = useState<number | null>(consumables[0]?.id ?? null);
+
+  if (!product) return null;
+
+  const gramsNum = parseInt(grams || "0", 10);
+  // price per 100g → total for given grams
+  const totalPrice = gramsNum > 0 ? (gramsNum / 100) * product.price : 0;
+  // unit price sent to API = price per gram
+  const unitPricePerGram = product.price / 100;
+
+  // Auto-select bag based on weight rules
+  const autoRule = bagSizeRules
+    .filter((r) => r.consumableId != null)
+    .sort((a, b) => a.maxWeightGrams - b.maxWeightGrams)
+    .find((r) => gramsNum <= r.maxWeightGrams);
+
+  const effectiveConsumableId = autoRule?.consumableId ?? selectedConsumableId;
+  const selectedConsumable = consumables.find((c) => c.id === effectiveConsumableId);
+
+  const handleNumpad = (key: string) => {
+    if (key === "C") { setGrams(""); return; }
+    if (key === "⌫") { setGrams((p) => p.slice(0, -1)); return; }
+    if (grams.length >= 5) return;
+    setGrams((p) => (p === "0" ? key : p + key));
+  };
+
+  const handleConfirm = () => {
+    if (gramsNum <= 0) return;
+    const wm: WeightModifiers = {
+      weightGrams: gramsNum,
+      calculatedUnitPrice: unitPricePerGram,
+      bagIncluded,
+      bagConsumableId: bagIncluded && effectiveConsumableId ? effectiveConsumableId : undefined,
+      bagConsumableName: bagIncluded && selectedConsumable ? selectedConsumable.name : undefined,
+    };
+    // unitPrice in cart = total for this portion (price shown as line total)
+    onConfirm(product, wm, totalPrice);
+  };
+
+  return (
+    <Dialog open onOpenChange={onCancel}>
+      <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden" data-testid="dialog-weight-input">
+        <div className="bg-primary/10 p-5">
+          <p className="text-sm font-semibold text-muted-foreground">{product.name}</p>
+          <p className="text-xs text-muted-foreground">RM {product.price.toFixed(2)} per 100g</p>
+        </div>
+        <div className="p-5 space-y-4">
+          {/* Weight display */}
+          <div className="bg-muted rounded-xl p-3 flex items-center justify-between border">
+            <span className="text-sm font-medium text-muted-foreground">Weight</span>
+            <span className="text-3xl font-black tabular-nums">{grams || "0"}<span className="text-lg text-muted-foreground ml-1">g</span></span>
+          </div>
+
+          {/* Numpad */}
+          <div className="grid grid-cols-3 gap-2">
+            {WEIGHT_NUMPAD_KEYS.map((key) => (
+              <button
+                key={key}
+                onClick={() => handleNumpad(key)}
+                data-testid={`weight-numpad-${key}`}
+                className={`h-12 rounded-xl text-lg font-bold transition-all active:scale-95 border ${
+                  key === "⌫" ? "bg-destructive/10 border-destructive/20 text-destructive hover:bg-destructive/20"
+                  : key === "C" ? "bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-950/30"
+                  : "bg-background border-border hover:bg-muted"
+                }`}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick weights */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {[100, 200, 300, 500].map((w) => (
+              <button
+                key={w}
+                onClick={() => setGrams(String(w))}
+                className="py-1.5 rounded-lg text-xs font-bold bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all"
+                data-testid={`weight-quick-${w}`}
+              >
+                {w}g
+              </button>
+            ))}
+          </div>
+
+          {/* Price preview */}
+          {gramsNum > 0 && (
+            <div className="flex items-center justify-between bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3 rounded-xl">
+              <span className="text-sm font-medium text-green-700 dark:text-green-400">Total for {gramsNum}g</span>
+              <span className="text-xl font-black text-green-700 dark:text-green-400">RM {totalPrice.toFixed(2)}</span>
+            </div>
+          )}
+
+          {/* Bag toggle */}
+          {consumables.length > 0 && (
+            <div className="flex items-center justify-between bg-muted/50 rounded-xl p-3 border">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-semibold">Include bag</p>
+                  {bagIncluded && autoRule && (
+                    <p className="text-xs text-muted-foreground">Auto: {autoRule.name} bag ({autoRule.maxWeightGrams}g max)</p>
+                  )}
+                  {bagIncluded && selectedConsumable && (
+                    <p className="text-xs text-muted-foreground">{selectedConsumable.name}</p>
+                  )}
+                </div>
+              </div>
+              <Switch checked={bagIncluded} onCheckedChange={setBagIncluded} data-testid="weight-bag-toggle" />
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2 px-5 pb-5">
+          <Button variant="outline" onClick={onCancel} className="rounded-xl flex-1" data-testid="weight-cancel">Cancel</Button>
+          <Button onClick={handleConfirm} className="rounded-xl flex-1" disabled={gramsNum <= 0} data-testid="weight-confirm">
+            Add {gramsNum > 0 ? `${gramsNum}g` : ""}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -591,9 +739,28 @@ function ReceiptModal({
 // ─── Main POS Component ────────────────────────────────────────────────────────
 
 export default function POS() {
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+  async function posFetch(path: string) {
+    const r = await fetch(`${BASE}${path}`, { credentials: "include" });
+    if (!r.ok) throw new Error(r.statusText);
+    return r.json();
+  }
+
   // Data
   const { data: products = [], isLoading: isLoadingProducts } = useListProducts({ active: true });
   const { data: categories = [] } = useListCategories();
+  const { data: posConsumables = [] } = useQuery<Array<{ id: number; name: string; stock: number; unit: string; active: boolean }>>({
+    queryKey: ["pos-consumables"],
+    queryFn: () => posFetch("/api/consumables"),
+    staleTime: 60000,
+  });
+  const { data: posBagRules = [] } = useQuery<Array<{ id: number; name: string; maxWeightGrams: number; consumableId: number | null }>>({
+    queryKey: ["pos-bag-rules"],
+    queryFn: () => posFetch("/api/bag-size-rules"),
+    staleTime: 60000,
+  });
+  const activeBagConsumables = posConsumables.filter((c) => c.active && c.stock > 0);
+
   const createOrder = useCreateOrder();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -607,6 +774,7 @@ export default function POS() {
 
   // Modifiers
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [pendingWeightProduct, setPendingWeightProduct] = useState<Product | null>(null);
 
   // Discount
   const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
@@ -669,20 +837,27 @@ export default function POS() {
       toast({ title: "Out of stock", variant: "destructive" });
       return;
     }
-    if (isCakeProduct(product)) {
+    const extProduct = product as Product & { productType?: string };
+    if (extProduct.productType === "weight") {
+      setPendingWeightProduct(product);
+    } else if (isCakeProduct(product)) {
       setPendingProduct(product);
     } else {
       addToCart(product, undefined, product.price);
     }
   }, [products]);
 
-  const addToCart = (product: Product, modifiers?: CartModifiers, unitPrice?: number) => {
+  const addToCart = (product: Product, modifiers?: CartModifiers, unitPrice?: number, weightModifiers?: WeightModifiers) => {
     const price = unitPrice ?? product.price;
     setCart((prev) => {
+      // Weight items are always unique entries (each has different weight)
+      if (weightModifiers) {
+        return [...prev, { product, quantity: 1, weightModifiers, unitPrice: price }];
+      }
       // If same product with same modifiers exists, bump quantity
       const key = `${product.id}-${JSON.stringify(modifiers ?? {})}`;
       const existingIdx = prev.findIndex(
-        (i) => `${i.product.id}-${JSON.stringify(i.modifiers ?? {})}` === key
+        (i) => !i.weightModifiers && `${i.product.id}-${JSON.stringify(i.modifiers ?? {})}` === key
       );
       if (existingIdx >= 0) {
         const existing = prev[existingIdx];
@@ -741,15 +916,45 @@ export default function POS() {
         paymentMethod === "split" ? (splitPayment?.method1 === "cash" ? "cash" : "card") :
         paymentMethod as "cash" | "card" | "ewallet";
 
+      // For weight-based items: quantity = grams, unitPrice override = price per gram
+      const apiItems = cart.map((item) => ({
+        productId: item.product.id,
+        quantity: item.weightModifiers ? item.weightModifiers.weightGrams : item.quantity,
+      }));
+
+      const itemPriceOverrides = cart
+        .filter((i) => i.weightModifiers)
+        .map((i) => ({
+          productId: i.product.id,
+          unitPrice: i.weightModifiers!.calculatedUnitPrice,
+        }));
+
+      // Aggregate bag deductions across all weight items
+      const bagMap = new Map<number, number>();
+      for (const item of cart) {
+        if (item.weightModifiers?.bagIncluded && item.weightModifiers.bagConsumableId) {
+          const cid = item.weightModifiers.bagConsumableId;
+          bagMap.set(cid, (bagMap.get(cid) ?? 0) + 1);
+        }
+      }
+      const bagDeductions = Array.from(bagMap.entries()).map(([consumableId, quantity]) => ({
+        consumableId,
+        quantity,
+      }));
+
+      const notes = cart.filter((i) => i.modifiers?.message)
+        .map((i) => `${i.product.name}: "${i.modifiers!.message}"`).join("; ") || null;
+
       const result = await createOrder.mutateAsync({
         data: {
-          items: cart.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+          items: apiItems,
           paymentMethod: apiMethod,
           amountPaid: amountPaid ?? null,
-          notes: cart.some((i) => i.modifiers?.message)
-            ? cart.filter((i) => i.modifiers?.message).map((i) => `${i.product.name}: "${i.modifiers!.message}"`).join("; ")
-            : null,
+          notes,
           staffId: user?.id,
+          // @ts-ignore — extra fields handled by API route
+          itemPriceOverrides,
+          bagDeductions,
         },
       });
 
@@ -997,6 +1202,14 @@ export default function POS() {
                       {item.modifiers && modifierSummary(item.modifiers) && (
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{modifierSummary(item.modifiers)}</p>
                       )}
+                      {item.weightModifiers && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.weightModifiers.weightGrams}g
+                          {item.weightModifiers.bagIncluded && item.weightModifiers.bagConsumableName && (
+                            <span className="ml-1 text-primary">+ {item.weightModifiers.bagConsumableName}</span>
+                          )}
+                        </p>
+                      )}
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-xs text-muted-foreground">{fmtMYR(item.unitPrice)}</span>
                         {item.product.taxable && sstEnabled && (
@@ -1007,6 +1220,15 @@ export default function POS() {
                     {/* Right: qty + subtotal */}
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                       <span className="font-bold text-sm">{fmtMYR(item.unitPrice * item.quantity)}</span>
+                      {item.weightModifiers ? (
+                        <button
+                          className="px-2 h-7 rounded-md flex items-center justify-center hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors text-xs font-semibold"
+                          onClick={(e) => { e.stopPropagation(); cancelLongPress(idx); removeItem(idx); }}
+                          data-testid={`cart-remove-${item.product.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
                       <div className="flex items-center gap-1 bg-muted rounded-lg">
                         <button
                           className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-background text-muted-foreground hover:text-foreground transition-colors"
@@ -1024,6 +1246,7 @@ export default function POS() {
                           <Plus className="w-3 h-3" />
                         </button>
                       </div>
+                      )}
                     </div>
                     {/* Remove button */}
                     <button
@@ -1147,6 +1370,20 @@ export default function POS() {
         }}
         onCancel={() => setPendingProduct(null)}
       />
+
+      {/* ── Weight Input Dialog ──────────────────────────────────────────────── */}
+      {pendingWeightProduct && (
+        <WeightInputModal
+          product={pendingWeightProduct}
+          consumables={activeBagConsumables}
+          bagSizeRules={posBagRules}
+          onConfirm={(product, weightModifiers, unitPrice) => {
+            setPendingWeightProduct(null);
+            addToCart(product, undefined, unitPrice, weightModifiers);
+          }}
+          onCancel={() => setPendingWeightProduct(null)}
+        />
+      )}
 
       {/* ── Payment Modal ────────────────────────────────────────────────────── */}
       <PaymentModal

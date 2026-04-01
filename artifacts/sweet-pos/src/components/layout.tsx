@@ -5,11 +5,25 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, logout, isLoading } = useAuth();
   const { theme, setTheme } = useTheme();
+
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const { data: alertData } = useQuery<{ totalAlertCount: number }>({
+    queryKey: ["layout-inventory-alerts"],
+    queryFn: async () => {
+      const r = await fetch(`${BASE}/api/inventory/alerts`, { credentials: "include" });
+      if (!r.ok) return { totalAlertCount: 0 };
+      return r.json();
+    },
+    refetchInterval: 120000,
+    enabled: !!user,
+  });
+  const inventoryAlertCount = alertData?.totalAlertCount ?? 0;
 
   useEffect(() => {
     if (!isLoading && !user && location !== "/login") {
@@ -51,6 +65,8 @@ export function Layout({ children }: { children: ReactNode }) {
         <nav className="flex-1 w-full px-2 md:px-4 space-y-2">
           {navItems.map((item) => {
             const isActive = location === item.href;
+            const isInventory = item.label === "Inventory";
+            const alertBadge = isInventory && inventoryAlertCount > 0;
             return (
               <Link key={item.href} href={item.href}>
                 <div
@@ -61,7 +77,17 @@ export function Layout({ children }: { children: ReactNode }) {
                   }`}
                   data-testid={`nav-${item.label.toLowerCase()}`}
                 >
-                  <item.icon className="w-6 h-6 flex-shrink-0 mx-auto md:mx-0" />
+                  <div className="relative flex-shrink-0 mx-auto md:mx-0">
+                    <item.icon className="w-6 h-6" />
+                    {alertBadge && (
+                      <span
+                        className="absolute -top-2 -right-2 bg-destructive text-white text-[9px] font-black min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-0.5"
+                        data-testid="nav-inventory-badge"
+                      >
+                        {inventoryAlertCount > 99 ? "99+" : inventoryAlertCount}
+                      </span>
+                    )}
+                  </div>
                   <span className="font-medium hidden md:block">{item.label}</span>
                 </div>
               </Link>
