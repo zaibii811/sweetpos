@@ -1,0 +1,61 @@
+Fix and implement the Gummy Plastic Bag toggle feature in SweetPOS.
+This feature has two parts: a global setting and a POS checkout toggle.
+
+--- PART 1: Global Setting in Inventory ---
+
+In the Inventory module, under the Consumables tab, on the 
+"Gummy Plastic Bag" consumable detail/edit page:
+
+Add a toggle switch labeled "Charge customers for plastic bag"
+- When ON: a RM0.25 bag charge is added to every gummy sale 
+  that has the bag toggle enabled at checkout
+- When OFF: bag is given free, no charge added to bill
+- This setting is saved globally in the app settings table as:
+    plastic_bag_charge_enabled: true/false
+    plastic_bag_price: 0.25 (editable field, default RM0.25)
+- Only Owner and Manager roles can change this setting
+
+Also add a summary on this same page showing:
+- Current stock (pieces remaining)
+- Total bags used today
+- Total bags used this week
+
+--- PART 2: POS Checkout — Bag Toggle on Weight Popup ---
+
+When a weight-based gummy product is added to cart, the weight 
+input popup appears. On this popup:
+
+Add a prominent toggle button labeled "🛍️ Plastic Bag"
+- Default state: ON
+- When ON and plastic_bag_charge_enabled is true:
+    → Add "Plastic Bag +RM0.25" as a separate line item in the cart
+    → Deduct 1 unit from Gummy Plastic Bag consumable stock 
+      when sale is completed
+- When ON and plastic_bag_charge_enabled is false:
+    → Bag is given free, no charge shown, but still deduct 1 
+      from consumable stock
+- When OFF:
+    → No charge, no stock deduction
+    → Show "No Bag" label on the cart line item for that product
+
+Cart display should show clearly:
+    Gummy Bears 250g          RM22.50
+    🛍️ Plastic Bag             RM0.25   ← shown as separate line
+                                         (or "Free" if charge disabled)
+
+--- PART 3: Receipt ---
+
+On the printed/digital receipt, show plastic bag charge as a 
+separate line item:
+    Plastic Bag (x1)          RM0.25
+
+If bag was declined (toggle OFF), do not show it on receipt at all.
+
+--- PART 4: Reporting ---
+
+In the Reports module, under Inventory Reports, add a 
+"Plastic Bag Usage" section showing:
+- Bags dispensed today / this week / this month
+- Bag charges collected (RM) for the period
+- Current stock remaining with estimated days left 
+  (based on average daily usage)

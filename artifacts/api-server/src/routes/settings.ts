@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, settingsTable, staffTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { isOwner } from "../middleware/require-role";
+import { isOwner, isManagerOrAbove } from "../middleware/require-role";
 
 const router: IRouter = Router();
 
@@ -13,7 +13,14 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   receipt_footer: "Thank you for your purchase!",
   sst_enabled_global: "true",
   payment_methods: JSON.stringify(["cash", "card", "tng", "duitnow"]),
+  plastic_bag_charge_enabled: "false",
+  plastic_bag_price: "0.25",
 };
+
+const MANAGER_EDITABLE_KEYS = new Set([
+  "plastic_bag_charge_enabled",
+  "plastic_bag_price",
+]);
 
 async function ensureDefaults() {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
@@ -46,8 +53,8 @@ router.patch("/settings", async (req, res): Promise<void> => {
     return;
   }
   const [staff] = await db.select().from(staffTable).where(eq(staffTable.id, req.session.staffId)).limit(1);
-  if (!staff || !isOwner(staff.role)) {
-    res.status(403).json({ error: "Owner access required" });
+  if (!staff || !isManagerOrAbove(staff.role)) {
+    res.status(403).json({ error: "Manager access required" });
     return;
   }
   const parsed = UpdateSettingsBody.safeParse(req.body);
@@ -56,6 +63,7 @@ router.patch("/settings", async (req, res): Promise<void> => {
     return;
   }
   for (const [key, value] of Object.entries(parsed.data)) {
+    if (!isOwner(staff.role) && !MANAGER_EDITABLE_KEYS.has(key)) continue;
     const existing = await db.select().from(settingsTable).where(eq(settingsTable.key, key)).limit(1);
     if (existing.length > 0) {
       await db.update(settingsTable).set({ value }).where(eq(settingsTable.key, key));

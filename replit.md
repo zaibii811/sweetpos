@@ -68,7 +68,7 @@ Full-stack Point-of-Sale (POS) web app for a Malaysian candy and cake shop calle
   - Quick-link buttons to POS, Reports, Inventory, Time Clock
 - **Reports & Analytics** (`/reports`, 3 tabs):
   - **Sales tab**: Date range picker + 6 quick presets (Today/Yesterday/This Week/Last Week/This Month/Last Month); KPI cards (Revenue, Transactions, Avg Order Value, SST); category revenue pie chart; payment methods bar chart; best-selling products bar chart + table (weight-based shows kg sold); plastic bags consumed; SST summary breakdown
-  - **Inventory tab**: 4 KPI cards (Total Products, Low Stock, Expiring, Expired); Products table with All/Low/Expiring/Expired filters; Consumables & Bags table; all with stock vs reorder-level comparison
+  - **Inventory tab**: 4 KPI cards (Total Products, Low Stock, Expiring, Expired); Products table with All/Low/Expiring/Expired filters; Consumables & Bags table; Plastic Bag Usage card (current stock + bags used today/this week/this month + estimated revenue if charge is enabled); all with stock vs reorder-level comparison
   - **Staff & Payroll tab**: Period selector (week/month); payroll summary table (hours, late count, overtime days, estimated pay); hours-worked bar chart; late arrivals log with incident count; Payroll CSV export; Late Log CSV export
 - **PWA**: Service worker + manifest for offline support on tablets/phones
 

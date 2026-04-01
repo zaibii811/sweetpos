@@ -162,6 +162,8 @@ router.post("/orders", async (req, res): Promise<void> => {
   // Extra fields not in the generated schema — read directly from body
   const bagDeductions: Array<{ consumableId: number; quantity: number; consumableName?: string }> =
     Array.isArray(req.body.bagDeductions) ? req.body.bagDeductions : [];
+  // Bag charge surcharge (not taxable)
+  const bagChargesTotal: number = typeof req.body.bagChargesTotal === "number" ? req.body.bagChargesTotal : 0;
   // Per-item price overrides (used for weight-based items where price is calculated client-side)
   const itemPriceOverrides: Record<number, number> = {};
   if (Array.isArray(req.body.itemPriceOverrides)) {
@@ -215,7 +217,7 @@ router.post("/orders", async (req, res): Promise<void> => {
     };
   });
 
-  const total = subtotal + taxTotal;
+  const total = subtotal + taxTotal + bagChargesTotal;
   const change = amountPaid != null && amountPaid > 0 ? amountPaid - total : null;
 
   const [newOrder] = await db
@@ -223,7 +225,7 @@ router.post("/orders", async (req, res): Promise<void> => {
     .values({
       orderNumber: generateOrderNumber(),
       status: "completed",
-      subtotal: String(subtotal.toFixed(2)),
+      subtotal: String((subtotal + bagChargesTotal).toFixed(2)),
       taxTotal: String(taxTotal.toFixed(2)),
       total: String(total.toFixed(2)),
       paymentMethod,

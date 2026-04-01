@@ -182,7 +182,7 @@ router.get("/reports/detailed-sales", async (req, res): Promise<void> => {
     quantity: stockAdjustmentsTable.quantity,
   }).from(stockAdjustmentsTable).where(and(
     eq(stockAdjustmentsTable.itemType, "consumable"),
-    eq(stockAdjustmentsTable.adjustmentType, "deduct"),
+    eq(stockAdjustmentsTable.adjustmentType, "deduction"),
     gte(stockAdjustmentsTable.createdAt, startDate),
     lte(stockAdjustmentsTable.createdAt, endDate),
   ));
@@ -273,7 +273,7 @@ router.get("/reports/bag-usage", async (req, res): Promise<void> => {
     const day = adj.createdAt.toISOString().split("T")[0];
     if (!byDay[day]) byDay[day] = {};
     if (!byDay[day][adj.itemName]) byDay[day][adj.itemName] = 0;
-    if (adj.adjustmentType === "deduct") byDay[day][adj.itemName] += parseFloat(adj.quantity as any);
+    if (adj.adjustmentType === "deduction") byDay[day][adj.itemName] += parseFloat(adj.quantity as any);
   }
 
   const allConsumables = await db.select({ id: consumablesTable.id, name: consumablesTable.name, stock: consumablesTable.stock }).from(consumablesTable).where(eq(consumablesTable.active, true));
@@ -281,6 +281,66 @@ router.get("/reports/bag-usage", async (req, res): Promise<void> => {
   res.json({
     byDay: Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([date, usage]) => ({ date, ...usage })),
     currentStock: allConsumables.map(c => ({ id: c.id, name: c.name, stock: c.stock })),
+  });
+});
+
+/* ─── Bag Usage Stats (today / this-week / this-month) ───────────── */
+router.get("/reports/bag-usage-stats", async (req, res): Promise<void> => {
+  if (!req.session.staffId) { res.status(401).json({ error: "Not authenticated" }); return; }
+
+  const now = new Date();
+
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  weekStart.setHours(0, 0, 0, 0);
+
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const allBagDeductions = await db.select({
+    itemId: stockAdjustmentsTable.itemId,
+    itemName: stockAdjustmentsTable.itemName,
+    quantity: stockAdjustmentsTable.quantity,
+    createdAt: stockAdjustmentsTable.createdAt,
+  }).from(stockAdjustmentsTable).where(and(
+    eq(stockAdjustmentsTable.itemType, "consumable"),
+    eq(stockAdjustmentsTable.adjustmentType, "deduction"),
+    gte(stockAdjustmentsTable.createdAt, monthStart),
+    lte(stockAdjustmentsTable.createdAt, todayEnd),
+  ));
+
+  const gummyBag = allBagDeductions.filter(a =>
+    a.itemName.toLowerCase().includes("gummy plastic bag") ||
+    a.itemName.toLowerCase().includes("plastic bag")
+  );
+
+  const usedToday = gummyBag.filter(a => a.createdAt >= todayStart && a.createdAt <= todayEnd)
+    .reduce((s, a) => s + parseFloat(a.quantity as any), 0);
+  const usedThisWeek = gummyBag.filter(a => a.createdAt >= weekStart && a.createdAt <= todayEnd)
+    .reduce((s, a) => s + parseFloat(a.quantity as any), 0);
+  const usedThisMonth = gummyBag.reduce((s, a) => s + parseFloat(a.quantity as any), 0);
+
+  const allConsumables = await db.select({
+    id: consumablesTable.id,
+    name: consumablesTable.name,
+    stock: consumablesTable.stock,
+  }).from(consumablesTable).where(eq(consumablesTable.active, true));
+
+  const plasticBagConsumable = allConsumables.find(c =>
+    c.name.toLowerCase().includes("gummy plastic bag") ||
+    c.name.toLowerCase().includes("plastic bag")
+  );
+
+  res.json({
+    usedToday: Math.round(usedToday),
+    usedThisWeek: Math.round(usedThisWeek),
+    usedThisMonth: Math.round(usedThisMonth),
+    currentStock: plasticBagConsumable?.stock ?? 0,
+    consumableId: plasticBagConsumable?.id ?? null,
+    consumableName: plasticBagConsumable?.name ?? "Gummy Plastic Bag",
   });
 });
 

@@ -39,6 +39,7 @@ interface WeightModifiers {
   bagIncluded: boolean;
   bagConsumableId?: number;
   bagConsumableName?: string;
+  bagChargePrice?: number;
 }
 
 interface CartItem {
@@ -256,20 +257,28 @@ function ModifiersDialog({ product, onConfirm, onCancel }: ModifiersDialogProps)
 
 // ─── Weight Input Modal ────────────────────────────────────────────────────────
 
+interface BagSettings {
+  chargeEnabled: boolean;
+  price: number;
+}
+
 interface WeightInputModalProps {
   product: (Product & { productType?: string }) | null;
   consumables: Array<{ id: number; name: string; stock: number; unit: string }>;
   bagSizeRules: Array<{ id: number; name: string; maxWeightGrams: number; consumableId: number | null }>;
+  bagSettings: BagSettings | null;
   onConfirm: (product: Product, weightModifiers: WeightModifiers, unitPrice: number) => void;
   onCancel: () => void;
 }
 
 const WEIGHT_NUMPAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "⌫"];
 
-function WeightInputModal({ product, consumables, bagSizeRules, onConfirm, onCancel }: WeightInputModalProps) {
+function WeightInputModal({ product, consumables, bagSizeRules, bagSettings, onConfirm, onCancel }: WeightInputModalProps) {
   const [grams, setGrams] = useState("");
   const [bagIncluded, setBagIncluded] = useState(consumables.length > 0);
   const [selectedConsumableId, setSelectedConsumableId] = useState<number | null>(consumables[0]?.id ?? null);
+  const chargeEnabled = !!(bagSettings?.chargeEnabled && bagSettings.price > 0);
+  const bagPrice = bagSettings?.price ?? 0;
 
   if (!product) return null;
 
@@ -303,6 +312,7 @@ function WeightInputModal({ product, consumables, bagSizeRules, onConfirm, onCan
       bagIncluded,
       bagConsumableId: bagIncluded && effectiveConsumableId ? effectiveConsumableId : undefined,
       bagConsumableName: bagIncluded && selectedConsumable ? selectedConsumable.name : undefined,
+      bagChargePrice: bagIncluded && chargeEnabled ? bagPrice : undefined,
     };
     // unitPrice in cart = total for this portion (price shown as line total)
     onConfirm(product, wm, totalPrice);
@@ -364,20 +374,35 @@ function WeightInputModal({ product, consumables, bagSizeRules, onConfirm, onCan
 
           {/* Bag toggle */}
           {consumables.length > 0 && (
-            <div className="flex items-center justify-between bg-muted/50 rounded-xl p-3 border">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-semibold">Include bag</p>
-                  {bagIncluded && autoRule && (
-                    <p className="text-xs text-muted-foreground">Auto: {autoRule.name} bag ({autoRule.maxWeightGrams}g max)</p>
-                  )}
-                  {bagIncluded && selectedConsumable && (
-                    <p className="text-xs text-muted-foreground">{selectedConsumable.name}</p>
-                  )}
+            <div
+              className={`rounded-xl border-2 p-3 transition-all ${bagIncluded ? (chargeEnabled ? "border-amber-400 bg-amber-50 dark:bg-amber-950/30" : "border-primary/40 bg-primary/5") : "border-border bg-muted/30"}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${bagIncluded ? (chargeEnabled ? "bg-amber-100 dark:bg-amber-900/50" : "bg-primary/10") : "bg-muted"}`}>
+                    <ShoppingBag className={`w-4 h-4 ${bagIncluded ? (chargeEnabled ? "text-amber-600 dark:text-amber-400" : "text-primary") : "text-muted-foreground"}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold leading-tight">
+                      Plastic Bag
+                      {chargeEnabled && bagIncluded && (
+                        <span className="ml-1.5 text-amber-600 dark:text-amber-400 font-black">+{fmtMYR(bagPrice)}</span>
+                      )}
+                      {chargeEnabled && !bagIncluded && (
+                        <span className="ml-1.5 text-muted-foreground text-xs font-normal">No bag</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-tight">
+                      {!chargeEnabled ? "Free • deducts stock" :
+                        bagIncluded ? "Charged as separate item" : "Customer declined bag"}
+                    </p>
+                  </div>
                 </div>
+                <Switch checked={bagIncluded} onCheckedChange={setBagIncluded} data-testid="weight-bag-toggle" />
               </div>
-              <Switch checked={bagIncluded} onCheckedChange={setBagIncluded} data-testid="weight-bag-toggle" />
+              {bagIncluded && autoRule && (
+                <p className="text-xs text-muted-foreground mt-2 pl-11">Auto: {autoRule.name} ({autoRule.maxWeightGrams}g max)</p>
+              )}
             </div>
           )}
         </div>
@@ -598,6 +623,7 @@ interface ReceiptModalProps {
   orderNumber: string;
   items: CartItem[];
   subtotal: number;
+  bagTotal: number;
   discountAmount: number;
   taxTotal: number;
   total: number;
@@ -609,7 +635,7 @@ interface ReceiptModalProps {
 }
 
 function ReceiptModal({
-  open, orderNumber, items, subtotal, discountAmount, taxTotal, total,
+  open, orderNumber, items, subtotal, bagTotal, discountAmount, taxTotal, total,
   sstEnabled, paymentMethod, amountPaid, change, onClose
 }: ReceiptModalProps) {
   const now = new Date();
@@ -624,9 +650,16 @@ function ReceiptModal({
       `Order: ${orderNumber}`,
       `Date: ${now.toLocaleDateString("en-MY")} ${now.toLocaleTimeString("en-MY")}`,
       ``,
-      ...items.map((i) => `${i.product.name}${i.modifiers?.size ? ` (${i.modifiers.size})` : ""} x${i.quantity} — RM ${(i.unitPrice * i.quantity).toFixed(2)}`),
+      ...items.map((i) => {
+        const lineTotal = i.unitPrice * i.quantity;
+        const bagLine = i.weightModifiers?.bagIncluded && i.weightModifiers.bagChargePrice
+          ? ` + Plastic Bag RM ${i.weightModifiers.bagChargePrice.toFixed(2)}`
+          : "";
+        return `${i.product.name}${i.modifiers?.size ? ` (${i.modifiers.size})` : ""} x${i.quantity} — RM ${lineTotal.toFixed(2)}${bagLine}`;
+      }),
       ``,
       `Subtotal: RM ${subtotal.toFixed(2)}`,
+      bagTotal > 0 ? `Plastic Bag: RM ${bagTotal.toFixed(2)}` : null,
       discountAmount > 0 ? `Discount: -RM ${discountAmount.toFixed(2)}` : null,
       sstEnabled ? `SST (8%): RM ${taxTotal.toFixed(2)}` : null,
       `*Total: RM ${total.toFixed(2)}*`,
@@ -667,21 +700,44 @@ function ReceiptModal({
           <Separator />
           <div className="space-y-1.5">
             {items.map((item, i) => (
-              <div key={i} className="flex justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium text-foreground truncate block">{item.product.name}</span>
-                  {item.modifiers && modifierSummary(item.modifiers) && (
-                    <span className="text-xs text-muted-foreground">{modifierSummary(item.modifiers)}</span>
-                  )}
-                  <span className="text-muted-foreground text-xs">x{item.quantity} @ {fmtMYR(item.unitPrice)}</span>
+              <div key={i}>
+                <div className="flex justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-foreground truncate block">{item.product.name}</span>
+                    {item.modifiers && modifierSummary(item.modifiers) && (
+                      <span className="text-xs text-muted-foreground">{modifierSummary(item.modifiers)}</span>
+                    )}
+                    {item.weightModifiers ? (
+                      <span className="text-muted-foreground text-xs">{item.weightModifiers.weightGrams}g @ {fmtMYR(item.weightModifiers.calculatedUnitPrice * 100)}/100g</span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">x{item.quantity} @ {fmtMYR(item.unitPrice)}</span>
+                    )}
+                  </div>
+                  <span className="font-semibold tabular-nums">{fmtMYR(item.unitPrice * item.quantity)}</span>
                 </div>
-                <span className="font-semibold tabular-nums">{fmtMYR(item.unitPrice * item.quantity)}</span>
+                {item.weightModifiers?.bagIncluded && (
+                  <div className="flex justify-between gap-2 pl-3 mt-0.5">
+                    <div className="flex-1 min-w-0 flex items-center gap-1">
+                      <ShoppingBag className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                      <span className="text-xs text-muted-foreground">Plastic Bag</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {item.weightModifiers.bagChargePrice ? fmtMYR(item.weightModifiers.bagChargePrice) : "Free"}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
           <Separator />
           <div className="space-y-1 text-xs">
             <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmtMYR(subtotal)}</span></div>
+            {bagTotal > 0 && (
+              <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" />Plastic Bag</span>
+                <span>{fmtMYR(bagTotal)}</span>
+              </div>
+            )}
             {discountAmount > 0 && (
               <div className="flex justify-between text-green-600"><span>Discount</span><span>-{fmtMYR(discountAmount)}</span></div>
             )}
@@ -759,7 +815,16 @@ export default function POS() {
     queryFn: () => posFetch("/api/bag-size-rules"),
     staleTime: 60000,
   });
+  const { data: posSettings = {} } = useQuery<Record<string, string>>({
+    queryKey: ["pos-settings"],
+    queryFn: () => posFetch("/api/settings"),
+    staleTime: 300000,
+  });
   const activeBagConsumables = posConsumables.filter((c) => c.active && c.stock > 0);
+  const bagSettings: BagSettings = {
+    chargeEnabled: posSettings.plastic_bag_charge_enabled === "true",
+    price: parseFloat(posSettings.plastic_bag_price ?? "0.25"),
+  };
 
   const createOrder = useCreateOrder();
   const { toast } = useToast();
@@ -806,6 +871,11 @@ export default function POS() {
   }, [products, activeCategory, searchQuery]);
 
   // Totals
+  const bagTotal = useMemo(
+    () => cart.reduce((sum, item) => sum + (item.weightModifiers?.bagChargePrice ?? 0), 0),
+    [cart]
+  );
+  // subtotal = product items only (bags shown separately, discount not applied to bags)
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
     [cart]
@@ -829,7 +899,7 @@ export default function POS() {
     }, 0);
   }, [cart, sstEnabled]);
 
-  const total = afterDiscount + taxTotal;
+  const total = afterDiscount + taxTotal + bagTotal;
 
   // Add to cart (with modifier check)
   const handleProductClick = useCallback((product: Product) => {
@@ -955,6 +1025,7 @@ export default function POS() {
           // @ts-ignore — extra fields handled by API route
           itemPriceOverrides,
           bagDeductions,
+          bagChargesTotal: bagTotal,
         },
       });
 
@@ -1203,12 +1274,25 @@ export default function POS() {
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{modifierSummary(item.modifiers)}</p>
                       )}
                       {item.weightModifiers && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {item.weightModifiers.weightGrams}g
-                          {item.weightModifiers.bagIncluded && item.weightModifiers.bagConsumableName && (
-                            <span className="ml-1 text-primary">+ {item.weightModifiers.bagConsumableName}</span>
+                        <div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {item.weightModifiers.weightGrams}g
+                            {!item.weightModifiers.bagIncluded && (
+                              <span className="ml-1.5 text-muted-foreground/60 italic">No Bag</span>
+                            )}
+                          </p>
+                          {item.weightModifiers.bagIncluded && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <ShoppingBag className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                                Plastic Bag
+                                {item.weightModifiers.bagChargePrice != null && item.weightModifiers.bagChargePrice > 0
+                                  ? ` +${fmtMYR(item.weightModifiers.bagChargePrice)}`
+                                  : " (free)"}
+                              </span>
+                            </div>
                           )}
-                        </p>
+                        </div>
                       )}
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-xs text-muted-foreground">{fmtMYR(item.unitPrice)}</span>
@@ -1310,6 +1394,12 @@ export default function POS() {
               <span>Subtotal</span>
               <span>{fmtMYR(subtotal)}</span>
             </div>
+            {bagTotal > 0 && (
+              <div className="flex justify-between text-amber-600 dark:text-amber-400 font-medium">
+                <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" /> Plastic Bag</span>
+                <span>{fmtMYR(bagTotal)}</span>
+              </div>
+            )}
             {discountAmount > 0 && (
               <div className="flex justify-between text-green-600 dark:text-green-400 font-medium">
                 <span>Discount {discountType === "percent" ? `(${rawDiscount}%)` : ""}</span>
@@ -1377,6 +1467,7 @@ export default function POS() {
           product={pendingWeightProduct}
           consumables={activeBagConsumables}
           bagSizeRules={posBagRules}
+          bagSettings={activeBagConsumables.length > 0 ? bagSettings : null}
           onConfirm={(product, weightModifiers, unitPrice) => {
             setPendingWeightProduct(null);
             addToCart(product, undefined, unitPrice, weightModifiers);
@@ -1402,6 +1493,7 @@ export default function POS() {
           orderNumber={receipt.orderNumber}
           items={cart}
           subtotal={subtotal}
+          bagTotal={bagTotal}
           discountAmount={discountAmount}
           taxTotal={taxTotal}
           total={total}

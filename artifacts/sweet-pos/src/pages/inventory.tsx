@@ -335,7 +335,10 @@ interface ConsumableModalProps {
 
 function ConsumableModal({ consumable, onClose, onSaved }: ConsumableModalProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const isEdit = !!consumable;
+  const isGummyBag = isEdit && (consumable!.name.toLowerCase().includes("gummy plastic bag") || consumable!.name.toLowerCase().includes("plastic bag"));
+  const canEditBagSettings = user?.role === "owner" || user?.role === "admin" || user?.role === "manager";
 
   const [form, setForm] = useState({
     name: consumable?.name ?? "",
@@ -345,6 +348,26 @@ function ConsumableModal({ consumable, onClose, onSaved }: ConsumableModalProps)
     costPerUnit: consumable?.costPerUnit?.toString() ?? "",
     active: consumable?.active ?? true,
   });
+
+  const { data: bagSettings } = useQuery<Record<string, string>>({
+    queryKey: ["settings-bag"],
+    queryFn: () => apiFetch("/api/settings"),
+    enabled: isGummyBag,
+    staleTime: 30000,
+  });
+
+  const { data: bagStats } = useQuery<{ usedToday: number; usedThisWeek: number; usedThisMonth: number; currentStock: number }>({
+    queryKey: ["bag-usage-stats"],
+    queryFn: () => apiFetch("/api/reports/bag-usage-stats"),
+    enabled: isGummyBag,
+    staleTime: 30000,
+  });
+
+  const [bagChargeEnabled, setBagChargeEnabled] = useState<boolean | null>(null);
+  const [bagPrice, setBagPrice] = useState<string>("");
+
+  const effectiveBagChargeEnabled = bagChargeEnabled !== null ? bagChargeEnabled : bagSettings?.plastic_bag_charge_enabled === "true";
+  const effectiveBagPrice = bagPrice !== "" ? bagPrice : (bagSettings?.plastic_bag_price ?? "0.25");
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -361,6 +384,15 @@ function ConsumableModal({ consumable, onClose, onSaved }: ConsumableModalProps)
     try {
       if (isEdit && consumable) {
         await apiFetch(`/api/consumables/${consumable.id}`, { method: "PATCH", body: JSON.stringify(body) });
+        if (isGummyBag && canEditBagSettings && (bagChargeEnabled !== null || bagPrice !== "")) {
+          await apiFetch("/api/settings", {
+            method: "PATCH",
+            body: JSON.stringify({
+              plastic_bag_charge_enabled: String(effectiveBagChargeEnabled),
+              plastic_bag_price: parseFloat(effectiveBagPrice) > 0 ? effectiveBagPrice : "0.25",
+            }),
+          });
+        }
         toast({ title: "Consumable updated" });
       } else {
         await apiFetch("/api/consumables", { method: "POST", body: JSON.stringify(body) });
@@ -406,6 +438,63 @@ function ConsumableModal({ consumable, onClose, onSaved }: ConsumableModalProps)
             <Switch id="c-active" checked={form.active} onCheckedChange={(v) => set("active", v)} />
             <Label htmlFor="c-active" className="text-sm cursor-pointer">Active</Label>
           </div>
+
+          {isGummyBag && canEditBagSettings && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <ShoppingBag className="w-3.5 h-3.5" /> Customer Bag Charge
+                </p>
+
+                {/* Stock usage summary */}
+                {bagStats && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "Current Stock", value: bagStats.currentStock },
+                      { label: "Used Today", value: bagStats.usedToday },
+                      { label: "Used This Week", value: bagStats.usedThisWeek },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-muted/60 rounded-xl p-2.5 text-center">
+                        <p className="text-lg font-black">{value}</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight mt-0.5">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Charge toggle */}
+                <div className="flex items-center justify-between bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                  <div>
+                    <p className="text-sm font-semibold">Charge customers for bag</p>
+                    <p className="text-xs text-muted-foreground">Add bag price to every gummy order</p>
+                  </div>
+                  <Switch
+                    checked={effectiveBagChargeEnabled}
+                    onCheckedChange={(v) => setBagChargeEnabled(v)}
+                    data-testid="switch-bag-charge-enabled"
+                  />
+                </div>
+
+                {/* Price input */}
+                {effectiveBagChargeEnabled && (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Charge price (RM)</Label>
+                    <Input
+                      type="number"
+                      step="0.05"
+                      min="0.05"
+                      value={effectiveBagPrice}
+                      onChange={(e) => setBagPrice(e.target.value)}
+                      placeholder="0.25"
+                      data-testid="input-bag-charge-price"
+                    />
+                    <p className="text-xs text-muted-foreground">Default: RM 0.25</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} className="rounded-xl">Cancel</Button>
@@ -778,6 +867,9 @@ export default function Inventory() {
     qc.invalidateQueries({ queryKey: ["consumables"] });
     qc.invalidateQueries({ queryKey: ["inventory-alerts"] });
     qc.invalidateQueries({ queryKey: ["stock-adjustments"] });
+    qc.invalidateQueries({ queryKey: ["settings"] });
+    qc.invalidateQueries({ queryKey: ["settings-bag"] });
+    qc.invalidateQueries({ queryKey: ["bag-usage-stats"] });
   };
 
   const handleDelete = async () => {

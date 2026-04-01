@@ -277,6 +277,17 @@ function InventoryTab() {
     queryFn: () => apiFetch("/api/reports/inventory-status"),
     refetchInterval: 60000,
   });
+  const { data: bagStats, isLoading: loadingBagStats } = useQuery<any>({
+    queryKey: ["bag-usage-stats"],
+    queryFn: () => apiFetch("/api/reports/bag-usage-stats"),
+    refetchInterval: 60000,
+  });
+  const { data: posSettings } = useQuery<Record<string, string>>({
+    queryKey: ["settings"],
+    queryFn: () => apiFetch("/api/settings"),
+  });
+  const bagChargeEnabled = posSettings?.plastic_bag_charge_enabled === "true";
+  const bagChargePrice = parseFloat(posSettings?.plastic_bag_price ?? "0.25");
 
   const products: any[] = data?.products ?? [];
   const consumables: any[] = data?.consumables ?? [];
@@ -391,6 +402,54 @@ function InventoryTab() {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+
+        {/* ── Plastic Bag Usage ─────────────────────────────────────────── */}
+        <Card className="shadow-sm border-amber-200 dark:border-amber-800">
+          <CardHeader className="pb-3 flex-row items-center justify-between gap-4">
+            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+              <Package className="w-4 h-4 text-amber-500" />
+              Plastic Bag Usage
+            </CardTitle>
+            <Badge className={`text-xs ${bagChargeEnabled ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300" : "bg-muted text-muted-foreground"}`}>
+              {bagChargeEnabled ? `Charged — RM ${bagChargePrice.toFixed(2)}/bag` : "Free (no charge)"}
+            </Badge>
+          </CardHeader>
+          <CardContent>
+            {loadingBagStats ? (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1,2,3,4].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+              </div>
+            ) : !bagStats ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No bag data available</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: "Current Stock", value: bagStats.currentStock, suffix: "bags", color: bagStats.currentStock < 50 ? "text-destructive" : "text-foreground" },
+                    { label: "Used Today", value: bagStats.usedToday, suffix: "bags", color: "text-foreground" },
+                    { label: "Used This Week", value: bagStats.usedThisWeek, suffix: "bags", color: "text-foreground" },
+                    { label: "Used This Month", value: bagStats.usedThisMonth, suffix: "bags", color: "text-foreground" },
+                  ].map(({ label, value, suffix, color }) => (
+                    <div key={label} className="bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-xl p-3 text-center">
+                      <p className={`text-2xl font-black ${color}`}>{value}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{suffix}</p>
+                      <p className="text-[10px] text-muted-foreground leading-tight mt-1">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                {bagChargeEnabled && bagStats.usedThisMonth > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Estimated Bag Revenue This Month</p>
+                    <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                      RM {(bagStats.usedThisMonth * bagChargePrice).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{bagStats.usedThisMonth} bags × RM {bagChargePrice.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
