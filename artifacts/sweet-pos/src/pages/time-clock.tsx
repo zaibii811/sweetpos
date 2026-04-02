@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Clock, LogIn, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL).replace(/\/$/, "");
 
 type ClockState = "idle" | "clocked-in" | "clocked-out-confirm";
 

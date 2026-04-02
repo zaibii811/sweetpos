@@ -795,7 +795,7 @@ function ReceiptModal({
 // ─── Main POS Component ────────────────────────────────────────────────────────
 
 export default function POS() {
-  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL).replace(/\/$/, "");
   async function posFetch(path: string) {
     const r = await fetch(`${BASE}${path}`, { credentials: "include" });
     if (!r.ok) throw new Error(r.statusText);

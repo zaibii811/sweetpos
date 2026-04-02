@@ -17,7 +17,7 @@ import { Users, Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, Camera, 
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL).replace(/\/$/, "");
 
 type Tab = "profiles" | "scheduling" | "reports";
 

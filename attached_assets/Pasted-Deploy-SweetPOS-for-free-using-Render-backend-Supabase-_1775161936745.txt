@@ -1,0 +1,86 @@
+Deploy SweetPOS for free using Render (backend), Supabase 
+(PostgreSQL), and Vercel (frontend). No paid services.
+
+--- STEP 1: Supabase database setup ---
+
+1. The PostgreSQL database will be hosted on Supabase (free tier)
+2. Update the database connection to use a DATABASE_URL 
+   environment variable (Supabase provides this as a 
+   connection string)
+3. Make sure SSL is enabled in the PostgreSQL connection config:
+      ssl: { rejectUnauthorized: false }
+   This is required for Supabase connections
+4. On first startup, auto-run all table creation migrations 
+   if tables don't exist
+
+--- STEP 2: Prepare backend for Render ---
+
+In the Express server (artifacts/api-server):
+
+1. Create .env.example:
+      DATABASE_URL=        ← Supabase PostgreSQL connection string
+      JWT_SECRET=          ← random secret string
+      PORT=3001
+      NODE_ENV=production
+      CORS_ORIGIN=         ← Vercel frontend URL
+
+2. Make sure server binds to 0.0.0.0 and uses process.env.PORT
+
+3. Update CORS to accept requests from CORS_ORIGIN env variable
+
+4. Add a /health endpoint returning { status: 'ok', 
+   timestamp: new Date() }
+
+5. Create render.yaml in the api-server root:
+   services:
+     - type: web
+       name: sweetpos-api
+       env: node
+       buildCommand: npm install
+       startCommand: node index.js
+       envVars:
+         - key: NODE_ENV
+           value: production
+
+6. Add keep-alive ping using node-cron:
+   - Ping /health every 10 minutes
+   - Only between 8AM–11PM Malaysia time (UTC+8)
+   - This prevents Render free tier from sleeping 
+     during shop hours
+
+--- STEP 3: Prepare frontend for Vercel ---
+
+In the React frontend (artifacts/sweet-pos):
+
+1. Create .env.example:
+      VITE_API_URL=        ← Render backend URL
+
+2. Replace all hardcoded localhost:3001 references with 
+   import.meta.env.VITE_API_URL
+
+3. Create vercel.json in sweet-pos root:
+   {
+     "rewrites": [
+       { "source": "/(.*)", "destination": "/index.html" }
+     ]
+   }
+
+4. Confirm pnpm build completes successfully
+
+--- STEP 4: Production hardening ---
+
+1. Remove or gate all console.log behind NODE_ENV check
+2. Error responses must not expose stack traces in production
+3. All API routes protected by auth middleware
+4. Confirm no hardcoded localhost URLs remain anywhere 
+   in the frontend
+
+--- STEP 5: Environment variable summary ---
+
+Generate a clear DEPLOYMENT.md file in the project root 
+listing every environment variable needed for both services, 
+where to find the values, and step-by-step instructions for:
+- Setting up Supabase and getting the DATABASE_URL
+- Deploying to Render and setting env variables
+- Deploying to Vercel and setting VITE_API_URL
+- Testing the full connection end to end

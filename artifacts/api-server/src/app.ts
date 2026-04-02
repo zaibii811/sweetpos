@@ -27,7 +27,15 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: true, credentials: true }));
+const isProd = process.env.NODE_ENV === "production";
+const corsOrigin = process.env.CORS_ORIGIN;
+
+app.use(
+  cors({
+    origin: corsOrigin ? corsOrigin.split(",").map((o) => o.trim()) : true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -38,8 +46,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false,
+      secure: isProd,
       httpOnly: true,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 8 * 60 * 60 * 1000,
     },
   }),

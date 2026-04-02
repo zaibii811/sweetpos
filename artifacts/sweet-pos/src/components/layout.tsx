@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import { useQuery } from "@tanstack/react-query";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL).replace(/\/$/, "");
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Point of Sale",

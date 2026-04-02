@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const BASE = (import.meta.env.VITE_API_URL ?? import.meta.env.BASE_URL).replace(/\/$/, "");
 type Tab = "sales" | "inventory" | "staff";
 const CHART_COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#f97316", "#06b6d4"];
 const PAYMENT_COLORS: Record<string, string> = { cash: "#10b981", ewallet: "#3b82f6", tng: "#8b5cf6", card: "#f59e0b", duitnow: "#06b6d4", unknown: "#94a3b8" };
