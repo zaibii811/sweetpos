@@ -1,48 +1,62 @@
 # SweetPOS Deployment Guide
 
-Deploy SweetPOS for free using **Supabase** (PostgreSQL), **Render** (backend API), and **Vercel** (frontend).
+## Services Used
+- Frontend: Vercel (free)
+- Backend: Render (free)
+- Database: Supabase (free)
 
 ---
 
-## Architecture
+## Environment Variables
 
-```
-Browser → Vercel (React frontend)
-              ↓ API calls
-         Render (Express backend)
-              ↓ SQL
-         Supabase (PostgreSQL)
-```
+### Backend (set in Render dashboard)
 
----
+| Variable | Where to get it |
+|---|---|
+| `DATABASE_URL` | Supabase → Project Settings → Database → Connection String (URI mode) |
+| `SESSION_SECRET` | Any random 32-character string |
+| `NODE_ENV` | Set to: `production` |
+| `CORS_ORIGIN` | Your Vercel frontend URL e.g. `https://sweetpos.vercel.app` |
+| `RENDER_EXTERNAL_URL` | Your Render service URL e.g. `https://sweetpos-api.onrender.com` |
+| `PORT` | Leave blank — Render sets this automatically |
 
-## Step 1 — Supabase (Database)
+### Frontend (set in Vercel dashboard)
 
-1. Go to [supabase.com](https://supabase.com) and create a free account
-2. Create a new project (pick the **Singapore** region for lowest latency from Malaysia)
-3. Wait for the project to finish provisioning (~2 minutes)
-4. Go to **Project Settings → Database → Connection string → URI**
-5. Copy the URI — it looks like:
-   ```
-   postgresql://postgres:[YOUR-PASSWORD]@db.xxxxxxxxxxxx.supabase.co:5432/postgres
-   ```
-6. Keep this — it's your `DATABASE_URL`
-
-> **Note:** The app auto-creates all tables and seeds real product data on first startup. No manual migrations needed.
+| Variable | Where to get it |
+|---|---|
+| `VITE_API_URL` | Your Render backend URL e.g. `https://sweetpos-api.onrender.com` |
 
 ---
 
-## Step 2 — Render (Backend API)
+## Deployment Steps (in order)
+1. Push this repo to GitHub
+2. Set up Supabase database
+3. Deploy backend to Render
+4. Deploy frontend to Vercel
+5. Test full connection
 
-### Create the service
+---
 
-1. Go to [render.com](https://render.com) and sign up (free)
-2. Click **New → Web Service**
-3. Connect your GitHub repository (push this project to GitHub first via Replit's Git panel)
-4. Configure:
-   - **Name:** `sweetpos-api`
-   - **Region:** Singapore
-   - **Runtime:** Node
+## Step-by-Step: Supabase
+
+1. Go to [supabase.com](https://supabase.com) → Sign up free
+2. New Project → give it a name → set a database password
+3. Wait for project to provision (~2 min)
+4. Go to **Project Settings → Database**
+5. Copy the Connection String in **URI mode**
+6. Replace `[YOUR-PASSWORD]` with your actual password
+7. Use this as `DATABASE_URL` in Render
+
+> The app auto-creates all tables and seeds staff + product data on first startup. No manual migrations needed.
+
+---
+
+## Step-by-Step: Render
+
+1. Go to [render.com](https://render.com) → Sign up free with GitHub
+2. **New → Web Service** → Connect your GitHub repo
+3. Configure:
+   - **Region:** Singapore (closest to Malaysia)
    - **Build command:**
      ```
      npm install -g pnpm && pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
@@ -51,97 +65,53 @@ Browser → Vercel (React frontend)
      ```
      node --enable-source-maps artifacts/api-server/dist/index.mjs
      ```
-   - **Plan:** Free
-
-### Environment variables (set in Render dashboard)
-
-| Variable | Value | Where to get it |
-|---|---|---|
-| `DATABASE_URL` | `postgresql://...` | Supabase → Project Settings → Database |
-| `SESSION_SECRET` | Any long random string | Generate at [randomkeygen.com](https://randomkeygen.com) |
-| `NODE_ENV` | `production` | Type this manually |
-| `CORS_ORIGIN` | `https://your-app.vercel.app` | Set after Step 3, then update |
-| `RENDER_EXTERNAL_URL` | `https://sweetpos-api.onrender.com` | Render shows this after first deploy |
-
-### After deploying
-
-- Render gives you a URL like `https://sweetpos-api.onrender.com`
-- Test it: visit `https://sweetpos-api.onrender.com/api/healthz` — should return `{ "status": "ok" }`
-- The keep-alive cron job will automatically ping this URL every 10 minutes between 8 AM–11 PM MYT
+4. Add all backend environment variables listed above
+5. Click **Deploy**
+6. Copy your Render URL when deployment completes (e.g. `https://sweetpos-api.onrender.com`)
+7. Test: visit `https://sweetpos-api.onrender.com/api/healthz` — should return `{"status":"ok"}`
 
 ---
 
-## Step 3 — Vercel (Frontend)
+## Step-by-Step: Vercel
 
-1. Go to [vercel.com](https://vercel.com) and sign up (free)
-2. Click **Add New → Project** and import your GitHub repository
-3. Set the **Root Directory** to `artifacts/sweet-pos`
-4. Vercel will auto-detect Vite. Confirm:
-   - **Framework:** Vite
-   - **Build command:** (leave blank — `vercel.json` handles it)
-   - **Output directory:** `dist/public`
-5. Add environment variable:
-
-| Variable | Value |
-|---|---|
-| `VITE_API_URL` | `https://sweetpos-api.onrender.com` (your Render URL) |
-
+1. Go to [vercel.com](https://vercel.com) → Sign up free with GitHub
+2. **New Project** → Import your GitHub repo
+3. Set **Root Directory** to `artifacts/sweet-pos`
+4. Framework will be auto-detected as **Vite**
+5. Add environment variable: `VITE_API_URL` = your Render URL
 6. Click **Deploy**
-
-### After deploying
-
-- Vercel gives you a URL like `https://sweetpos.vercel.app`
-- Go back to **Render → sweetpos-api → Environment** and update `CORS_ORIGIN` to this URL
-- Trigger a redeploy on Render so the new CORS setting takes effect
+7. Copy your Vercel URL (e.g. `https://sweetpos.vercel.app`)
+8. Go back to **Render → Environment** and set `CORS_ORIGIN` to this Vercel URL, then redeploy
 
 ---
 
-## Step 4 — End-to-End Test
+## Step-by-Step: Test the connection
 
-1. Open your Vercel URL in the browser
-2. Log in as owner: username `owner`, password `sweetpos2024`
-3. Confirm the POS loads products
-4. Place a test order and confirm it appears in Orders
-5. Check Inventory and Reports
-
----
-
-## Environment Variable Summary
-
-### Backend (`artifacts/api-server`) — set in Render dashboard
-
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | Supabase PostgreSQL connection URI |
-| `SESSION_SECRET` | ✅ | Random string for session signing (min 32 chars) |
-| `NODE_ENV` | ✅ | Must be `production` |
-| `CORS_ORIGIN` | ✅ | Your Vercel frontend URL (e.g. `https://yourapp.vercel.app`) |
-| `RENDER_EXTERNAL_URL` | ✅ | Your Render service URL (for keep-alive pings) |
-| `PORT` | auto | Render sets this automatically — do not override |
-
-### Frontend (`artifacts/sweet-pos`) — set in Vercel dashboard
-
-| Variable | Required | Description |
-|---|---|---|
-| `VITE_API_URL` | ✅ | Your Render backend URL (e.g. `https://sweetpos-api.onrender.com`) |
+1. Open your Vercel URL in browser
+2. Try logging in — if it works, the backend is connected
+   - Owner login: username `owner`, password `sweetpos2024` (change this after first login!)
+3. Add a test product in Inventory
+4. Confirm it saves and reloads correctly
+5. Open the same URL on your phone — confirm it works remotely
 
 ---
 
-## Troubleshooting
+## Keep-Alive (Render free tier)
 
-**Login works but pages show no data**
-- Check `CORS_ORIGIN` on Render matches your Vercel URL exactly (no trailing slash)
-- Open browser DevTools → Network and look for CORS errors on API calls
+The backend includes an automatic keep-alive service that pings `/api/healthz` every 10 minutes **between 8 AM and 11 PM Malaysia time**. This prevents the Render free tier from sleeping during shop hours. Outside those hours the server sleeps normally.
 
-**Database connection error on Render**
-- Confirm `DATABASE_URL` is correct (copy it fresh from Supabase)
-- SSL is enabled automatically when the URL contains `supabase`
+The keep-alive activates automatically when `RENDER_EXTERNAL_URL` is set.
 
-**Render service sleeping (first request takes 30+ seconds)**
-- This is normal on the free tier for the first request after sleeping
-- The keep-alive cron (8 AM–11 PM MYT) prevents sleeping during shop hours
-- Upgrade to Render's Starter plan ($7/month) for always-on
+---
 
-**Vercel build fails**
-- Ensure `VITE_API_URL` is set in Vercel environment variables before building
-- Check that the GitHub repo has all files committed
+## Default Login Credentials (change after first deploy)
+
+| Role | Username | Password | PIN |
+|---|---|---|---|
+| Owner | `owner` | `sweetpos2024` | `1234` |
+| Manager (Siti) | — | — | `2222` |
+| Cashier (Ahmad) | — | — | `3333` |
+| Cashier (Nur Ain) | — | — | `4444` |
+| Cashier (Farah) | — | — | `5555` |
+
+> Change the owner password via **Staff → Edit → Password** after your first login in production.

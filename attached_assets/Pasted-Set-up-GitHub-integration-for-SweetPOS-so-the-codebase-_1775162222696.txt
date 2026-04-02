@@ -1,0 +1,127 @@
+Set up GitHub integration for SweetPOS so the codebase can be 
+deployed to Render and Vercel.
+
+--- STEP 1: Prepare .gitignore ---
+
+Create or update .gitignore in the project root to exclude:
+    node_modules/
+    .env
+    .env.local
+    dist/
+    .replit
+    replit.nix
+    *.log
+    .DS_Store
+    db/*.db
+    uploads/*.csv
+
+Make sure .env.example files are NOT ignored — they should 
+be committed so Render and Vercel know what variables to set.
+
+--- STEP 2: Clean up sensitive data ---
+
+Before pushing to GitHub, make sure no sensitive data is 
+hardcoded anywhere in the codebase:
+
+1. Scan all files for any hardcoded:
+   - Database passwords or connection strings
+   - JWT secrets or API keys
+   - Any credentials or tokens
+   Replace all with process.env.VARIABLE_NAME references
+
+2. Confirm .env files are in .gitignore and will NOT 
+   be pushed to GitHub
+
+--- STEP 3: Create DEPLOYMENT.md ---
+
+Create a DEPLOYMENT.md file in the project root with these 
+exact sections:
+
+# SweetPOS Deployment Guide
+
+## Services Used
+- Frontend: Vercel (free)
+- Backend: Render (free)
+- Database: Supabase (free)
+
+## Environment Variables
+
+### Backend (set in Render dashboard)
+| Variable | Where to get it |
+|---|---|
+| DATABASE_URL | Supabase → Project Settings → Database → Connection String (URI mode) |
+| JWT_SECRET | Any random 32-character string |
+| NODE_ENV | Set to: production |
+| CORS_ORIGIN | Your Vercel frontend URL e.g. https://sweetpos.vercel.app |
+| PORT | Leave blank — Render sets this automatically |
+
+### Frontend (set in Vercel dashboard)
+| Variable | Where to get it |
+|---|---|
+| VITE_API_URL | Your Render backend URL e.g. https://sweetpos-api.onrender.com |
+
+## Deployment Steps (in order)
+1. Push this repo to GitHub (this step)
+2. Set up Supabase database
+3. Deploy backend to Render
+4. Deploy frontend to Vercel
+5. Test full connection
+
+## Step-by-Step: Supabase
+1. Go to supabase.com → Sign up free
+2. New Project → give it a name → set a database password
+3. Wait for project to provision (~2 min)
+4. Go to Project Settings → Database
+5. Copy the Connection String in URI mode
+6. Replace [YOUR-PASSWORD] with your actual password
+7. Use this as DATABASE_URL in Render
+
+## Step-by-Step: Render
+1. Go to render.com → Sign up free with GitHub
+2. New → Web Service → Connect your GitHub repo
+3. Set root directory to: artifacts/api-server
+4. Build command: npm install
+5. Start command: node index.js
+6. Add all backend environment variables
+7. Click Deploy
+8. Copy your Render URL when deployment completes
+
+## Step-by-Step: Vercel
+1. Go to vercel.com → Sign up free with GitHub
+2. New Project → Import your GitHub repo
+3. Set root directory to: artifacts/sweet-pos
+4. Add environment variable: VITE_API_URL
+5. Click Deploy
+6. Copy your Vercel URL
+
+## Step-by-Step: Test the connection
+1. Open your Vercel URL in browser
+2. Try logging in — if it works, backend is connected
+3. Add a test product in inventory
+4. Confirm it saves and reloads correctly
+5. Open the same URL on your phone — confirm it works remotely
+
+--- STEP 4: Confirm project structure is GitHub-ready ---
+
+Make sure the repo has this clean structure:
+    /artifacts/sweet-pos      ← React frontend
+    /artifacts/api-server     ← Express backend
+    .gitignore
+    DEPLOYMENT.md
+    README.md                 ← create if missing, 
+                                 just "SweetPOS — Candy Shop POS App"
+    package.json              ← root level if monorepo
+
+--- STEP 5: Final check ---
+
+Run through this checklist and confirm each item:
+    [ ] No .env files will be pushed
+    [ ] No hardcoded secrets in any file
+    [ ] Both frontend and backend build successfully
+    [ ] .env.example exists for both frontend and backend
+    [ ] DEPLOYMENT.md is complete and accurate
+    [ ] .gitignore is comprehensive
+    [ ] README.md exists
+
+Report back with any issues found and fix them before 
+confirming the repo is ready to push to GitHub.

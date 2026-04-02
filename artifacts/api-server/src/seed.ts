@@ -18,6 +18,7 @@ export async function seedIfEmpty() {
   if (count === 0) {
     console.log("[seed] Empty database detected — seeding staff and settings…");
 
+    // Default demo credentials — change the owner password after first login in production
     const ownerPasswordHash = await bcrypt.hash("sweetpos2024", 10);
 
     await db.insert(staffTable).values([

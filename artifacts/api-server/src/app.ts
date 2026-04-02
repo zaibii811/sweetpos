@@ -42,7 +42,10 @@ app.use(cookieParser());
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "sweetpos-secret-key",
+    secret: process.env.SESSION_SECRET ?? (() => {
+      if (isProd) throw new Error("SESSION_SECRET environment variable is required in production");
+      return "sweetpos-dev-secret-not-for-production";
+    })(),
     resave: false,
     saveUninitialized: false,
     cookie: {
