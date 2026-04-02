@@ -803,17 +803,24 @@ export default function POS() {
   }
 
   // Data
-  const { data: products = [], isLoading: isLoadingProducts } = useListProducts({ active: true });
-  const { data: categories = [] } = useListCategories();
+  const { data: products = [], isLoading: isLoadingProducts } = useListProducts(
+    { active: true },
+    { query: { select: (data) => Array.isArray(data) ? data : [] } },
+  );
+  const { data: categories = [] } = useListCategories({
+    query: { select: (data) => Array.isArray(data) ? data : [] },
+  });
   const { data: posConsumables = [] } = useQuery<Array<{ id: number; name: string; stock: number; unit: string; active: boolean }>>({
     queryKey: ["pos-consumables"],
     queryFn: () => posFetch("/api/consumables"),
     staleTime: 60000,
+    select: (data) => Array.isArray(data) ? data : [],
   });
   const { data: posBagRules = [] } = useQuery<Array<{ id: number; name: string; maxWeightGrams: number; consumableId: number | null }>>({
     queryKey: ["pos-bag-rules"],
     queryFn: () => posFetch("/api/bag-size-rules"),
     staleTime: 60000,
+    select: (data) => Array.isArray(data) ? data : [],
   });
   const { data: posSettings = {} } = useQuery<Record<string, string>>({
     queryKey: ["pos-settings"],

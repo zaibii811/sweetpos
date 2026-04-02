@@ -104,6 +104,7 @@ function useProducts() {
   return useQuery<ExtendedProduct[]>({
     queryKey: ["products-extended"],
     queryFn: () => apiFetch("/api/products"),
+    select: (data) => Array.isArray(data) ? data : [],
   });
 }
 
@@ -111,6 +112,7 @@ function useConsumables() {
   return useQuery<Consumable[]>({
     queryKey: ["consumables"],
     queryFn: () => apiFetch("/api/consumables"),
+    select: (data) => Array.isArray(data) ? data : [],
   });
 }
 
@@ -132,6 +134,7 @@ function useStockAdjustments(itemType?: string, itemId?: number) {
       return apiFetch(`/api/stock-adjustments?${params}`);
     },
     enabled: true,
+    select: (data) => Array.isArray(data) ? data : [],
   });
 }
 
@@ -139,6 +142,7 @@ function useBagSizeRules() {
   return useQuery<BagSizeRule[]>({
     queryKey: ["bag-size-rules"],
     queryFn: () => apiFetch("/api/bag-size-rules"),
+    select: (data) => Array.isArray(data) ? data : [],
   });
 }
 
