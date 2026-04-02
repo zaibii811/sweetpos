@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedIfEmpty } from "./seed";
+import { startKeepalive } from "./keepalive";
 
 const rawPort = process.env["PORT"];
 
@@ -24,6 +25,7 @@ seedIfEmpty()
         process.exit(1);
       }
       logger.info({ port }, "Server listening");
+      startKeepalive();
     });
   })
   .catch((err) => {
