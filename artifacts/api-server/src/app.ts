@@ -28,14 +28,38 @@ app.use(
   }),
 );
 const isProd = process.env.NODE_ENV === "production";
-const corsOrigin = process.env.CORS_ORIGIN;
 
-app.use(
-  cors({
-    origin: corsOrigin ? corsOrigin.split(",").map((o) => o.trim()) : true,
-    credentials: true,
-  }),
-);
+// Build allowed origins: always include known production domains + localhost for dev,
+// plus anything extra set in CORS_ORIGIN env var (comma-separated).
+const ALWAYS_ALLOWED = [
+  "https://sweetpos.vercel.app",
+  "https://sweetpos-sweet-pos.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+const envOrigins = (process.env.CORS_ORIGIN ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+const allowedOrigins = Array.from(new Set([...ALWAYS_ALLOWED, ...envOrigins]));
+
+const corsOptions: cors.CorsOptions = {
+  origin(requestOrigin, callback) {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!requestOrigin) return callback(null, true);
+    if (allowedOrigins.includes(requestOrigin)) return callback(null, true);
+    callback(new Error(`CORS: origin not allowed — ${requestOrigin}`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
+
+// Handle OPTIONS preflight for every route BEFORE any other middleware
+// Express 5 requires explicit wildcard syntax — "/*path" not "*"
+app.options("/*path", cors(corsOptions));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
