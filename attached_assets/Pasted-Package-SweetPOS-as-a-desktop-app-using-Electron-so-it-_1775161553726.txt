@@ -1,0 +1,84 @@
+Package SweetPOS as a desktop app using Electron so it can run 
+locally on a Windows or Mac computer with its own app icon.
+
+--- STEP 1: Install dependencies ---
+In the root of the project, install:
+- electron
+- electron-builder
+- concurrently
+- wait-on
+
+--- STEP 2: Create the Electron main process file ---
+Create /electron/main.js with the following:
+- Launch the Express backend server on startup (port 3001)
+- Open an Electron BrowserWindow pointing to localhost:3001
+- Window size: 1280x800, resizable, with a custom app icon
+- Show a loading screen while the backend is starting up
+- On window close, shut down the Express server cleanly
+- Enable contextIsolation and disable nodeIntegration for security
+
+--- STEP 3: App icon ---
+- Create an /assets/ folder in the root
+- Use a placeholder icon for now (512x512 PNG named icon.png, 
+  256x256 ICO named icon.ico for Windows)
+- Reference the icon in the BrowserWindow config
+
+--- STEP 4: Update package.json ---
+Add the following to the root package.json:
+
+  "main": "electron/main.js",
+  "scripts": {
+    "electron": "electron .",
+    "electron:dev": "concurrently \"npm run server\" \"wait-on http://localhost:3001 && electron .\"",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.sweetpos.app",
+    "productName": "SweetPOS",
+    "icon": "assets/icon",
+    "files": [
+      "electron/**/*",
+      "client/dist/**/*",
+      "server/**/*",
+      "db/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+
+--- STEP 5: Build the React frontend for production ---
+Update the React Vite config so the built files output to 
+/client/dist/ and the Express server serves them as static files 
+when running in production/Electron mode.
+
+In server/index.js, add:
+- If NODE_ENV === 'production', serve /client/dist as static
+- All unmatched routes return /client/dist/index.html
+
+--- STEP 6: Test locally ---
+Run "npm run electron:dev" and confirm:
+- The Express backend starts
+- The Electron window opens and loads SweetPOS
+- All features work (POS, inventory, staff, reports)
+- The SQLite database persists between app restarts
+
+--- STEP 7: Confirm the database path ---
+Make sure the SQLite database file is stored in a persistent 
+location that survives app updates:
+- On Windows: C:/Users/<username>/AppData/Roaming/SweetPOS/
+- On Mac: ~/Library/Application Support/SweetPOS/
+Use Electron's app.getPath('userData') to set this path 
+dynamically in the database connection config.
