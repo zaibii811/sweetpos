@@ -4,33 +4,21 @@ import { runMigrations } from "./migrate";
 import { seedIfEmpty } from "./seed";
 import { startKeepalive } from "./keepalive";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+const port = parseInt(process.env.PORT || "3001", 10);
 
 runMigrations()
   .then(() => seedIfEmpty())
   .then(() => {
-    app.listen(port, (err) => {
-      if (err) {
-        logger.error({ err }, "Error listening on port");
-        process.exit(1);
-      }
+    const server = app.listen(port, "0.0.0.0", () => {
       logger.info({ port }, "Server listening");
       startKeepalive();
     });
+    server.on("error", (err) => {
+      logger.error({ err }, "Server failed to start");
+      process.exit(1);
+    });
   })
   .catch((err) => {
-    logger.error({ err }, "Seed failed — aborting startup");
+    logger.error({ err }, "Startup failed — aborting");
     process.exit(1);
   });

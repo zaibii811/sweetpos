@@ -2,9 +2,11 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import cookieParser from "cookie-parser";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { pool } from "@workspace/db";
 
 const app: Express = express();
 
@@ -27,6 +29,7 @@ app.use(
     },
   }),
 );
+
 const isProd = process.env.NODE_ENV === "production";
 
 // Build allowed origins: always include known production domains + localhost for dev,
@@ -64,8 +67,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Persistent PostgreSQL session store — survives restarts and works across
+// multiple Render instances. Falls back gracefully if the table doesn't exist yet
+// (connect-pg-simple creates it automatically via createTableIfMissing).
+const PgSession = connectPgSimple(session);
+
 app.use(
   session({
+    store: new PgSession({
+      pool,
+      tableName: "session",
+      createTableIfMissing: true,
+    }),
     secret: process.env.SESSION_SECRET ?? (() => {
       if (isProd) throw new Error("SESSION_SECRET environment variable is required in production");
       return "sweetpos-dev-secret-not-for-production";

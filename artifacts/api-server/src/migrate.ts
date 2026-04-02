@@ -151,6 +151,16 @@ const CREATE_TABLES: string[] = [
     "notes" text,
     "created_at" timestamp with time zone DEFAULT now() NOT NULL
   )`,
+
+  // Session table required by connect-pg-simple (schema must match exactly)
+  `CREATE TABLE IF NOT EXISTS "session" (
+    "sid" varchar NOT NULL COLLATE "default",
+    "sess" json NOT NULL,
+    "expire" timestamp(6) NOT NULL,
+    CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire")`,
 ];
 
 // Foreign key constraints added safely using DO blocks (idempotent)
