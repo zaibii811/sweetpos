@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { runMigrations } from "./migrate";
 import { seedIfEmpty } from "./seed";
 import { startKeepalive } from "./keepalive";
 
@@ -17,7 +18,8 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-seedIfEmpty()
+runMigrations()
+  .then(() => seedIfEmpty())
   .then(() => {
     app.listen(port, (err) => {
       if (err) {
